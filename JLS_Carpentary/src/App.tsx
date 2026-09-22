@@ -1,737 +1,348 @@
-import { useState, useEffect, useRef } from 'react';
-
-const NAV_LINKS = [
-  { label: 'About', href: '#sobre' },
-  { label: 'Services', href: '#servicos' },
-  { label: 'Work', href: '#trabalhos' },
-  { label: 'Contact', href: '#contacto' },
-];
-
-const SERVICES = [
-  {
-    title: 'Bespoke Furniture',
-    desc: 'One-of-a-kind pieces designed for your space — wardrobes, shelving, dining tables, and beds crafted to measure from hand-selected timber.',
-    icon: '⬡',
-  },
-  {
-    title: 'Restoration & Repair',
-    desc: 'We breathe new life into antique and worn pieces. Stripping, sanding, finishing, and repairing furniture with respect for its history.',
-    icon: '◈',
-  },
-  {
-    title: 'Interior Joinery',
-    desc: 'Skirting boards, architraves, timber ceilings, panelling, and wall linings that transform an ordinary interior into something memorable.',
-    icon: '◇',
-  },
-  {
-    title: 'Kitchens & Wardrobes',
-    desc: 'Built-in kitchen fronts and fitted wardrobes designed to the millimetre for a perfect fit, with finishes that last for decades.',
-    icon: '▷',
-  },
-];
-
-const PROJECTS = [
-  {
-    id: 1,
-    title: 'Oak Dining Table',
-    category: 'Furniture',
-    img: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&h=600&fit=crop&auto=format',
-    year: '2024',
-  },
-  {
-    id: 2,
-    title: 'Walnut Library',
-    category: 'Joinery',
-    img: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&h=600&fit=crop&auto=format',
-    year: '2024',
-  },
-  {
-    id: 3,
-    title: 'Ash Timber Kitchen',
-    category: 'Kitchen',
-    img: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop&auto=format',
-    year: '2023',
-  },
-  {
-    id: 4,
-    title: 'Chair Restoration',
-    category: 'Restoration',
-    img: 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&h=600&fit=crop&auto=format',
-    year: '2023',
-  },
-  {
-    id: 5,
-    title: 'Carved Bedhead',
-    category: 'Furniture',
-    img: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&h=600&fit=crop&auto=format',
-    year: '2023',
-  },
-  {
-    id: 6,
-    title: 'Timber Workbench',
-    category: 'Joinery',
-    img: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop&auto=format',
-    year: '2022',
-  },
-];
-
-function useScrolled() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', fn, { passive: true });
-    return () => window.removeEventListener('scroll', fn);
-  }, []);
-  return scrolled;
-}
-
-function Nav() {
-  const scrolled = useScrolled();
-  const [open, setOpen] = useState(false);
-
-  return (
-    <header
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
-      style={{
-        background: scrolled ? 'rgba(21, 16, 10, 0.95)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(196,136,42,0.12)' : '1px solid transparent',
-      }}
-    >
-      <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <a href="#" className="flex flex-col leading-none">
-          <span
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.2rem', color: '#f0e6d0', letterSpacing: '-0.02em' }}
-          >
-            Manuel Ferreira
-          </span>
-          <span style={{ fontSize: '0.65rem', color: '#c4882a', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 500 }}>
-            Carpenter & Cabinet Maker
-          </span>
-        </a>
-
-        <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              style={{
-                fontSize: '0.8rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                fontWeight: 500,
-                color: '#b8a890',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = '#c4882a')}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = '#b8a890')}
-            >
-              {l.label}
-            </a>
-          ))}
-          <a
-            href="#contacto"
-            style={{
-              fontSize: '0.75rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-              color: '#15100a',
-              background: '#c4882a',
-              padding: '0.5rem 1.2rem',
-              borderRadius: '2px',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => ((e.target as HTMLElement).style.background = '#e4a84a')}
-            onMouseLeave={(e) => ((e.target as HTMLElement).style.background = '#c4882a')}
-          >
-            Get a Quote
-          </a>
-        </nav>
-
-        <button
-          className="md:hidden flex flex-col gap-1.5 p-1"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          <span style={{ width: 22, height: 1.5, background: '#f0e6d0', display: 'block', transition: 'transform 0.2s', transform: open ? 'rotate(45deg) translateY(5px)' : 'none' }} />
-          <span style={{ width: 22, height: 1.5, background: '#f0e6d0', display: 'block', opacity: open ? 0 : 1, transition: 'opacity 0.2s' }} />
-          <span style={{ width: 22, height: 1.5, background: '#f0e6d0', display: 'block', transition: 'transform 0.2s', transform: open ? 'rotate(-45deg) translateY(-5px)' : 'none' }} />
-        </button>
-      </div>
-
-      {open && (
-        <div style={{ background: '#1f160d', borderTop: '1px solid rgba(196,136,42,0.12)' }} className="md:hidden px-6 py-6 flex flex-col gap-5">
-          {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={() => setOpen(false)}
-              style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#b8a890' }}>
-              {l.label}
-            </a>
-          ))}
-          <a href="#contacto" onClick={() => setOpen(false)}
-            style={{ fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, color: '#15100a', background: '#c4882a', padding: '0.6rem 1rem', borderRadius: '2px', textAlign: 'center' }}>
-            Get a Quote
-          </a>
-        </div>
-      )}
-    </header>
-  );
-}
-
-function Hero() {
-  return (
-    <section className="relative min-h-screen flex items-end" style={{ background: '#15100a' }}>
-      <div className="absolute inset-0 overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1611269154421-4e27233ac5c7?w=1600&h=1000&fit=crop&auto=format"
-          alt="Carpenter working with timber"
-          className="w-full h-full object-cover"
-          style={{ opacity: 0.35 }}
-        />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #15100a 40%, rgba(21,16,10,0.4) 100%)' }} />
-      </div>
-
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-20 md:pb-28">
-        <div className="max-w-3xl">
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1.5rem' }}>
-            Est. 1998 · Melbourne, Australia
-          </p>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 300,
-              fontSize: 'clamp(3rem, 8vw, 6.5rem)',
-              lineHeight: 1.0,
-              color: '#f0e6d0',
-              letterSpacing: '-0.03em',
-              marginBottom: '2rem',
-            }}
-          >
-            Timber holds<br />
-            <em style={{ fontStyle: 'italic', color: '#c4882a' }}>memory.</em>
-          </h1>
-          <p style={{ fontSize: '1.05rem', color: '#b8a890', lineHeight: 1.75, maxWidth: '480px', marginBottom: '2.5rem' }}>
-            Bespoke furniture, restoration, and interior joinery.
-            Every piece is made by hand, from carefully selected timber, with a care you can feel at first touch.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <a
-              href="#trabalhos"
-              style={{
-                fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
-                color: '#15100a', background: '#c4882a', padding: '0.85rem 2rem', borderRadius: '2px',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.background = '#e4a84a')}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.background = '#c4882a')}
-            >
-              View Work
-            </a>
-            <a
-              href="#contacto"
-              style={{
-                fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500,
-                color: '#f0e6d0', border: '1px solid rgba(196,136,42,0.35)', padding: '0.85rem 2rem', borderRadius: '2px',
-                transition: 'border-color 0.2s, color 0.2s',
-              }}
-              onMouseEnter={(e) => { (e.target as HTMLElement).style.borderColor = '#c4882a'; (e.target as HTMLElement).style.color = '#c4882a'; }}
-              onMouseLeave={(e) => { (e.target as HTMLElement).style.borderColor = 'rgba(196,136,42,0.35)'; (e.target as HTMLElement).style.color = '#f0e6d0'; }}
-            >
-              Request a Quote
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-8 right-6 md:right-12 z-10 hidden md:flex flex-col items-center gap-2">
-        <div style={{ width: 1, height: 60, background: 'linear-gradient(to bottom, transparent, rgba(196,136,42,0.6))' }} />
-        <p style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', writingMode: 'vertical-rl' }}>
-          Scroll
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function Stats() {
-  const items = [
-    { value: '26', label: 'Years of Experience' },
-    { value: '800+', label: 'Pieces Delivered' },
-    { value: '100%', label: 'Handcrafted' },
-    { value: '5★', label: 'Average Rating' },
-  ];
-  return (
-    <div style={{ background: '#1f160d', borderTop: '1px solid rgba(196,136,42,0.12)', borderBottom: '1px solid rgba(196,136,42,0.12)' }}>
-      <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {items.map((s) => (
-          <div key={s.label} className="text-center">
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '2.2rem', color: '#c4882a', lineHeight: 1 }}>{s.value}</p>
-            <p style={{ fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b8a890', marginTop: '0.4rem' }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function About() {
-  return (
-    <section id="sobre" className="py-24 md:py-32" style={{ background: '#15100a' }}>
-      <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-        <div className="relative">
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-16px -16px 16px 16px',
-              border: '1px solid rgba(196,136,42,0.2)',
-              borderRadius: '2px',
-              pointerEvents: 'none',
-            }}
-          />
-          <img
-            src="https://images.unsplash.com/photo-1504148455328-c376907d081c?w=700&h=850&fit=crop&auto=format"
-            alt="Manuel Ferreira in his workshop"
-            className="w-full rounded-sm object-cover"
-            style={{ height: '520px', background: '#2a1e11' }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '-1.5rem',
-              right: '-1.5rem',
-              background: '#c4882a',
-              color: '#15100a',
-              padding: '1.25rem 1.5rem',
-              fontFamily: 'var(--font-display)',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              lineHeight: 1.3,
-            }}
-          >
-            Workshop in Melbourne<br />
-            <span style={{ fontWeight: 400, fontStyle: 'italic' }}>since 1998</span>
-          </div>
-        </div>
-
-        <div>
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1.2rem' }}>
-            About the Craftsman
-          </p>
-          <h2
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              fontSize: 'clamp(2rem, 4vw, 3rem)',
-              lineHeight: 1.1,
-              color: '#f0e6d0',
-              letterSpacing: '-0.02em',
-              marginBottom: '1.8rem',
-            }}
-          >
-            I learnt from my father.<br />
-            <em style={{ fontStyle: 'italic', color: '#b8a890' }}>He learnt from his.</em>
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: '#b8a890', lineHeight: 1.8, fontSize: '0.95rem' }}>
-            <p>
-              I started working with timber at sixteen, in my father's workshop in rural Victoria.
-              I learnt early that wood isn't just a material — it has grain, scent, warmth, and a character entirely its own.
-            </p>
-            <p>
-              Today, with over 25 years of experience, I still work piece by piece, by hand,
-              with the same respect for the timber and the client that I learnt in that first workshop.
-            </p>
-            <p>
-              I work primarily with Australian hardwoods — blackwood, spotted gum, Victorian ash, and jarrah —
-              and with imported timbers when the project calls for it.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 mt-8">
-            {['Blackwood', 'Spotted Gum', 'Vic Ash', 'Jarrah', 'Huon Pine', 'Teak'].map((m) => (
-              <span
-                key={m}
-                style={{
-                  fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500,
-                  color: '#c4882a', border: '1px solid rgba(196,136,42,0.3)', padding: '0.3rem 0.8rem', borderRadius: '2px',
-                }}
-              >
-                {m}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Services() {
-  return (
-    <section id="servicos" className="py-24 md:py-32" style={{ background: '#1f160d' }}>
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="max-w-lg mb-16">
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1rem' }}>
-            What I Do
-          </p>
-          <h2
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              fontSize: 'clamp(2rem, 4vw, 3rem)',
-              lineHeight: 1.1,
-              color: '#f0e6d0',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Services made with the time they deserve.
-          </h2>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-px" style={{ border: '1px solid rgba(196,136,42,0.12)', background: 'rgba(196,136,42,0.12)' }}>
-          {SERVICES.map((s, i) => (
-            <div
-              key={s.title}
-              style={{ background: '#1f160d', padding: '2.5rem', transition: 'background 0.25s' }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = '#2a1e11')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = '#1f160d')}
-            >
-              <div style={{ fontSize: '1.4rem', color: '#c4882a', marginBottom: '1.2rem', lineHeight: 1 }}>{s.icon}</div>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.3rem', color: '#f0e6d0', marginBottom: '0.8rem', letterSpacing: '-0.01em' }}>
-                {s.title}
-              </h3>
-              <p style={{ color: '#b8a890', lineHeight: 1.75, fontSize: '0.9rem' }}>{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Portfolio() {
-  const [filter, setFilter] = useState('Todos');
-  const categories = ['All', 'Furniture', 'Joinery', 'Kitchen', 'Restoration'];
-  const filtered = filter === 'All' ? PROJECTS : PROJECTS.filter((p) => p.category === filter);
-
-  return (
-    <section id="trabalhos" className="py-24 md:py-32" style={{ background: '#15100a' }}>
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-12">
-          <div>
-            <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1rem' }}>
-              Portfolio
-            </p>
-            <h2
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 400,
-                fontSize: 'clamp(2rem, 4vw, 3rem)',
-                lineHeight: 1.1,
-                color: '#f0e6d0',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Recent work.
-            </h2>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setFilter(c)}
-                style={{
-                  fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500,
-                  padding: '0.45rem 1rem', borderRadius: '2px', cursor: 'pointer', transition: 'all 0.2s',
-                  color: filter === c ? '#15100a' : '#b8a890',
-                  background: filter === c ? '#c4882a' : 'transparent',
-                  border: filter === c ? '1px solid #c4882a' : '1px solid rgba(196,136,42,0.25)',
-                }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-px" style={{ background: 'rgba(196,136,42,0.1)' }}>
-          {filtered.map((p) => (
-            <div
-              key={p.id}
-              className="group relative overflow-hidden"
-              style={{ background: '#15100a', cursor: 'pointer' }}
-            >
-              <img
-                src={p.img}
-                alt={p.title}
-                className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                style={{ height: '280px', background: '#2a1e11' }}
-              />
-              <div
-                className="absolute inset-0 flex flex-col justify-end p-6"
-                style={{
-                  background: 'linear-gradient(to top, rgba(21,16,10,0.95) 30%, transparent 80%)',
-                  opacity: 0,
-                  transition: 'opacity 0.3s',
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '0')}
-              >
-                <p style={{ fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c4882a', marginBottom: '0.4rem' }}>
-                  {p.category} · {p.year}
-                </p>
-                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.1rem', color: '#f0e6d0' }}>
-                  {p.title}
-                </p>
-              </div>
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                style={{ border: '2px solid rgba(196,136,42,0.4)' }} />
-              <div style={{ padding: '1rem 1.2rem', background: '#1a1208' }}>
-                <p style={{ fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c4882a', marginBottom: '0.2rem' }}>
-                  {p.category}
-                </p>
-                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1rem', color: '#f0e6d0' }}>
-                  {p.title}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Process() {
-  const steps = [
-    { n: '01', title: 'Consultation', desc: 'We arrange a free visit to understand your space, your needs, and your taste.' },
-    { n: '02', title: 'Design & Quote', desc: 'We present a technical drawing and a detailed quote. No surprises, no hidden costs.' },
-    { n: '03', title: 'Production', desc: 'Every piece is made in our Melbourne workshop. You\'re welcome to visit during the process.' },
-    { n: '04', title: 'Delivery & Install', desc: 'We deliver, install, and aren\'t satisfied until you are.' },
-  ];
-  return (
-    <section style={{ background: '#1f160d', borderTop: '1px solid rgba(196,136,42,0.12)' }} className="py-24 md:py-32">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="max-w-lg mb-16">
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1rem' }}>
-            How I Work
-          </p>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1, color: '#f0e6d0', letterSpacing: '-0.02em' }}>
-            A simple process, no complications.
-          </h2>
-        </div>
-        <div className="grid md:grid-cols-4 gap-8">
-          {steps.map((s, i) => (
-            <div key={s.n} className="relative">
-              {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-4 left-full w-full h-px" style={{ background: 'rgba(196,136,42,0.2)', transform: 'translateX(-50%)' }} />
-              )}
-              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', color: 'rgba(196,136,42,0.2)', lineHeight: 1, marginBottom: '1rem' }}>{s.n}</p>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.1rem', color: '#f0e6d0', marginBottom: '0.6rem' }}>{s.title}</h3>
-              <p style={{ color: '#b8a890', fontSize: '0.88rem', lineHeight: 1.7 }}>{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Testimonials() {
-  const reviews = [
-    { name: 'Catherine Alvarez', loc: 'Fitzroy, Melbourne', text: 'Manuel built our fitted library and it\'s simply perfect. He respected our space to the millimetre and the quality is extraordinary.', stars: 5 },
-    { name: 'James Mendez', loc: 'Geelong', text: 'He restored my grandmother\'s dining table. It looks brand new without losing any of its character. Impeccable work from a thoroughly trustworthy craftsman.', stars: 5 },
-    { name: 'Sophie & Robert Costa', loc: 'Brunswick', text: 'The kitchen Manuel made for us completely transformed our home. The attention to detail is remarkable. We recommend him without hesitation.', stars: 5 },
-  ];
-  return (
-    <section style={{ background: '#15100a', borderTop: '1px solid rgba(196,136,42,0.12)' }} className="py-24 md:py-32">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1rem' }}>
-            Testimonials
-          </p>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1, color: '#f0e6d0', letterSpacing: '-0.02em' }}>
-            What clients say.
-          </h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {reviews.map((r) => (
-            <div key={r.name} style={{ background: '#1f160d', border: '1px solid rgba(196,136,42,0.12)', padding: '2rem', borderRadius: '2px' }}>
-              <div style={{ color: '#c4882a', fontSize: '1rem', letterSpacing: '0.1em', marginBottom: '1.2rem' }}>{'★'.repeat(r.stars)}</div>
-              <p style={{ color: '#b8a890', lineHeight: 1.8, fontSize: '0.92rem', fontStyle: 'italic', marginBottom: '1.5rem' }}>"{r.text}"</p>
-              <div>
-                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, color: '#f0e6d0', fontSize: '0.95rem' }}>{r.name}</p>
-                <p style={{ fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c4882a' }}>{r.loc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Contact() {
-  const [form, setForm] = useState({ nome: '', email: '', telefone: '', mensagem: '', servico: '' });
-  const [sent, setSent] = useState(false);
-
-  const handle = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSent(true);
-  };
-
-  const inputStyle = {
-    width: '100%',
-    background: '#2a1e11',
-    border: '1px solid rgba(196,136,42,0.2)',
-    borderRadius: '2px',
-    padding: '0.85rem 1rem',
-    color: '#f0e6d0',
-    fontSize: '0.9rem',
-    outline: 'none',
-    fontFamily: 'var(--font-body)',
-    transition: 'border-color 0.2s',
-  } as React.CSSProperties;
-
-  const labelStyle = {
-    fontSize: '0.7rem',
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase' as const,
-    color: '#b8a890',
-    fontWeight: 500,
-    display: 'block',
-    marginBottom: '0.5rem',
-  };
-
-  return (
-    <section id="contacto" className="py-24 md:py-32" style={{ background: '#1f160d', borderTop: '1px solid rgba(196,136,42,0.12)' }}>
-      <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-start">
-        <div>
-          <p style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, marginBottom: '1rem' }}>
-            Contact
-          </p>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1, color: '#f0e6d0', letterSpacing: '-0.02em', marginBottom: '1.5rem' }}>
-            Let's talk about your project.
-          </h2>
-          <p style={{ color: '#b8a890', lineHeight: 1.8, fontSize: '0.95rem', marginBottom: '2.5rem' }}>
-            The initial consultation is free and without obligation. I respond to all enquiries within 24 hours.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-            {[
-              { label: 'Workshop', value: '14 Timber Lane, Collingwood VIC 3066' },
-              { label: 'Phone', value: '+61 412 345 678' },
-              { label: 'Email', value: 'manuel@ferreiracarpentry.com.au' },
-              { label: 'Hours', value: 'Mon–Fri 8am–6pm · Sat 9am–1pm' },
-            ].map((c) => (
-              <div key={c.label} style={{ display: 'flex', gap: '1rem' }}>
-                <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c4882a', fontWeight: 500, minWidth: '70px', paddingTop: '2px' }}>{c.label}</span>
-                <span style={{ color: '#b8a890', fontSize: '0.92rem' }}>{c.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          {sent ? (
-            <div style={{ background: '#2a1e11', border: '1px solid rgba(196,136,42,0.3)', padding: '3rem 2rem', borderRadius: '2px', textAlign: 'center' }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: '#c4882a', marginBottom: '0.8rem' }}>Message received.</p>
-              <p style={{ color: '#b8a890', lineHeight: 1.7 }}>Thank you for getting in touch. I'll be in contact shortly.</p>
-            </div>
-          ) : (
-            <form onSubmit={handle} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label style={labelStyle}>Name</label>
-                  <input required style={inputStyle} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    onFocus={(e) => (e.target.style.borderColor = '#c4882a')}
-                    onBlur={(e) => (e.target.style.borderColor = 'rgba(196,136,42,0.2)')}
-                    placeholder="Your name" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Phone</label>
-                  <input style={inputStyle} value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-                    onFocus={(e) => (e.target.style.borderColor = '#c4882a')}
-                    onBlur={(e) => (e.target.style.borderColor = 'rgba(196,136,42,0.2)')}
-                    placeholder="+61 4xx xxx xxx" />
-                </div>
-              </div>
-              <div>
-                <label style={labelStyle}>Email</label>
-                <input required type="email" style={inputStyle} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  onFocus={(e) => (e.target.style.borderColor = '#c4882a')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(196,136,42,0.2)')}
-                  placeholder="your@email.com.au" />
-              </div>
-              <div>
-                <label style={labelStyle}>Service</label>
-                <select style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} value={form.servico}
-                  onChange={(e) => setForm({ ...form, servico: e.target.value })}
-                  onFocus={(e) => (e.target.style.borderColor = '#c4882a')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(196,136,42,0.2)')}>
-                  <option value="">Select a service</option>
-                  <option>Bespoke Furniture</option>
-                  <option>Restoration & Repair</option>
-                  <option>Interior Joinery</option>
-                  <option>Kitchens & Wardrobes</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Message</label>
-                <textarea required rows={4} style={{ ...inputStyle, resize: 'vertical' }} value={form.mensagem}
-                  onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
-                  onFocus={(e) => (e.target.style.borderColor = '#c4882a')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(196,136,42,0.2)')}
-                  placeholder="Describe your project..." />
-              </div>
-              <button
-                type="submit"
-                style={{
-                  background: '#c4882a', color: '#15100a', fontSize: '0.8rem', letterSpacing: '0.12em',
-                  textTransform: 'uppercase', fontWeight: 600, padding: '1rem', borderRadius: '2px',
-                  border: 'none', cursor: 'pointer', transition: 'background 0.2s',
-                }}
-                onMouseEnter={(e) => ((e.target as HTMLElement).style.background = '#e4a84a')}
-                onMouseLeave={(e) => ((e.target as HTMLElement).style.background = '#c4882a')}
-              >
-                Send Message
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer style={{ background: '#0f0b06', borderTop: '1px solid rgba(196,136,42,0.12)', padding: '2.5rem 1.5rem' }}>
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: '#6a5c46' }}>
-          © 2024 Manuel Ferreira · Carpenter & Cabinet Maker
-        </p>
-        <p style={{ fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4a3c2c' }}>
-          Melbourne, Australia
-        </p>
-      </div>
-    </footer>
-  );
-}
+import { useState } from 'react'
+import { Menu, X, ArrowRight, Star, CheckCircle, Award, Users, Moon, Sun } from 'lucide-react'
 
 export default function App() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    setIsMenuOpen(false)
+  }
+
+  // Theme classes
+  const bgClass = isDarkMode ? 'bg-gray-950' : 'bg-white'
+  const textClass = isDarkMode ? 'text-white' : 'text-slate-900'
+  const navBgClass = isDarkMode ? 'bg-gray-900' : 'bg-white'
+  const navBorderClass = isDarkMode ? 'border-gray-700' : 'border-slate-100'
+  const secondaryBgClass = isDarkMode ? 'bg-gray-900' : 'bg-slate-50'
+  const cardBgClass = isDarkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900' : 'bg-gradient-to-br from-slate-50 to-white'
+  const cardBorderClass = isDarkMode ? 'border-gray-700' : 'border-slate-100'
+  const textSecondaryClass = isDarkMode ? 'text-gray-400' : 'text-slate-600'
+  const textTertiaryClass = isDarkMode ? 'text-gray-300' : 'text-slate-700'
+  const accentBgClass = isDarkMode ? 'bg-teal-900' : 'bg-teal-50'
+  const accentTextClass = isDarkMode ? 'text-teal-300' : 'text-teal-700'
+  const hoverBgClass = isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-slate-100'
+
   return (
-    <div style={{ minHeight: '100vh' }}>
-      <Nav />
-      <Hero />
-      <Stats />
-      <About />
-      <Services />
-      <Portfolio />
-      <Process />
-      <Testimonials />
-      <Contact />
-      <Footer />
+    <div className={`w-full min-h-screen ${bgClass} ${textClass} transition-colors duration-300`}>
+      {/* Navigation */}
+      <nav className={`fixed top-0 w-full ${navBgClass} shadow-lg z-50 border-b ${navBorderClass} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            <button onClick={() => scrollToSection('home')} className="flex items-center gap-2 animate-fade-in-down">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accentBgClass}`}>
+                <span className={`text-lg font-bold ${accentTextClass}`}>J</span>
+              </div>
+              <span className={`text-2xl font-bold bg-gradient-to-r ${isDarkMode ? 'from-teal-400 to-cyan-500' : 'from-teal-600 to-teal-700'} bg-clip-text text-transparent`}>JLS Carpentry</span>
+            </button>
+            
+            {/* Desktop Menu */}
+            <div className="hidden md:flex gap-8 items-center">
+              <button onClick={() => scrollToSection('home')} className={`${textSecondaryClass} hover:text-white font-medium transition-smooth duration-300`}>Home</button>
+              <button onClick={() => scrollToSection('services')} className={`${textSecondaryClass} hover:text-white font-medium transition-smooth duration-300`}>Services</button>
+              <button onClick={() => scrollToSection('portfolio')} className={`${textSecondaryClass} hover:text-white font-medium transition-smooth duration-300`}>Portfolio</button>
+              <button onClick={() => scrollToSection('testimonials')} className={`${textSecondaryClass} hover:text-white font-medium transition-smooth duration-300`}>Testimonials</button>
+              <button onClick={() => scrollToSection('contact')} className={`bg-gradient-to-r ${isDarkMode ? 'from-teal-700 to-teal-600' : 'from-teal-600 to-teal-700'} text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-md hover:-translate-y-0.5 transition-smooth duration-300`}>Get Quote</button>
+              
+              {/* Theme Toggle */}
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`ml-4 p-2 rounded-lg transition-smooth duration-300 ${isDarkMode ? 'bg-gray-800 text-yellow-400' : 'bg-slate-100 text-slate-600'} hover:scale-110`}
+              >
+                {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+              </button>
+            </div>
+            
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center gap-2">
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg transition-smooth duration-300 ${isDarkMode ? 'bg-gray-800 text-yellow-400' : 'bg-slate-100 text-slate-600'}`}
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2">
+                {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
+              </button>
+            </div>
+          </div>
+          
+          {/* Mobile Menu */}
+          {isMenuOpen && (
+            <div className={`md:hidden border-t ${navBorderClass} pb-6 space-y-3 animate-fade-in-down ${isDarkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
+              <button onClick={() => scrollToSection('home')} className={`block w-full text-left py-3 px-2 ${hoverBgClass} rounded-lg font-medium transition-colors`}>Home</button>
+              <button onClick={() => scrollToSection('services')} className={`block w-full text-left py-3 px-2 ${hoverBgClass} rounded-lg font-medium transition-colors`}>Services</button>
+              <button onClick={() => scrollToSection('portfolio')} className={`block w-full text-left py-3 px-2 ${hoverBgClass} rounded-lg font-medium transition-colors`}>Portfolio</button>
+              <button onClick={() => scrollToSection('testimonials')} className={`block w-full text-left py-3 px-2 ${hoverBgClass} rounded-lg font-medium transition-colors`}>Testimonials</button>
+              <button onClick={() => scrollToSection('contact')} className={`block w-full text-left py-3 px-2 ${hoverBgClass} rounded-lg font-medium transition-colors text-teal-600 font-bold`}>Get Quote</button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section id="home" className={`pt-32 pb-20 px-4 ${isDarkMode ? 'bg-gradient-to-b from-gray-950 via-gray-900 to-gray-900' : 'bg-gradient-to-b from-white via-slate-50 to-white'} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1 animate-fade-in-up">
+            <img 
+              src="https://cdn.prod.website-files.com/6390e14cc734a931f8327343/679c741cfd2f81997c15fb20_Featured-image.jpg" 
+              alt="Premium Carpentry Workshop" 
+              className={`w-full h-96 md:h-[500px] rounded-2xl shadow-lg object-cover hover:shadow-xl transition-smooth duration-500 ${isDarkMode ? 'border border-gray-700' : 'border border-slate-200'}`}
+            />
+          </div>
+          <div className="order-1 md:order-2 space-y-8 animate-slide-in-left">
+            <div>
+              <div className={`inline-flex items-center gap-2 ${accentBgClass} ${accentTextClass} px-4 py-2 rounded-full text-sm font-semibold mb-6 ${isDarkMode ? 'border border-teal-700' : 'border border-teal-200'} animate-fade-in-down`}>
+                <Award size={16} />
+                Award-Winning Craftsmanship Since 1998
+              </div>
+              <h1 className={`text-6xl md:text-7xl font-bold leading-tight mb-6 ${textClass}`}>
+                Exceptional <span className={`bg-gradient-to-r ${isDarkMode ? 'from-teal-400 to-cyan-400' : 'from-teal-600 to-teal-700'} bg-clip-text text-transparent`}>Wood Craftsmanship</span>
+              </h1>
+              <p className={`text-xl ${textSecondaryClass} leading-relaxed mb-8`}>
+                Transform your vision into reality with premium, handcrafted woodworking solutions. JLS Carpentry combines 25+ years of expertise with meticulous attention to detail.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up">
+              <button 
+                onClick={() => scrollToSection('contact')} 
+                className={`bg-gradient-to-r ${isDarkMode ? 'from-teal-700 to-teal-600' : 'from-teal-600 to-teal-700'} hover:shadow-xl hover:-translate-y-1 text-white font-bold py-4 px-8 rounded-lg flex items-center justify-center gap-2 transition-smooth duration-300`}
+              >
+                Get Your Free Quote <ArrowRight size={20} />
+              </button>
+              <button 
+                onClick={() => scrollToSection('portfolio')} 
+                className={`border-2 ${isDarkMode ? 'border-teal-600 text-teal-400 hover:bg-teal-600/10' : 'border-teal-600 text-teal-700 hover:bg-teal-50'} font-bold py-4 px-8 rounded-lg transition-smooth duration-300`}
+              >
+                View Our Portfolio
+              </button>
+            </div>
+            <div className={`grid grid-cols-3 gap-6 pt-8 border-t ${isDarkMode ? 'border-gray-700' : 'border-slate-200'} animate-fade-in-up`}>
+              <div><p className={`text-4xl font-bold ${textClass}`}>25+</p><p className={`${textSecondaryClass} text-sm`}>Years Experience</p></div>
+              <div><p className={`text-4xl font-bold ${textClass}`}>1000+</p><p className={`${textSecondaryClass} text-sm`}>Projects Completed</p></div>
+              <div><p className={`text-4xl font-bold ${textClass}`}>98%</p><p className={`${textSecondaryClass} text-sm`}>Client Satisfaction</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" className={`py-24 px-4 ${secondaryBgClass} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Our Specialized Services</h2>
+            <p className={`text-xl ${textSecondaryClass} max-w-2xl mx-auto`}>From bespoke furniture to architectural installations, we deliver exceptional craftsmanship that elevates any space</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { title: 'Custom Furniture Design', icon: 'ðŸª‘', desc: 'Bespoke pieces tailored to your exact specifications', features: ['Made to measure', 'Premium materials', 'Lifetime support'] },
+              { title: 'Kitchen Cabinetry', icon: 'ðŸ ', desc: 'Elegant cabinet solutions that maximize your space', features: ['Custom layouts', 'Hardware options', 'Pro installation'] },
+              { title: 'Storage Solutions', icon: 'ðŸ“¦', desc: 'Organized, beautiful storage that fits perfectly', features: ['Space optimization', 'Custom finishes', 'Integrated lighting'] },
+              { title: 'Architectural Joinery', icon: 'ðŸŽ¨', desc: 'Complex woodwork for unique architectural elements', features: ['Detail oriented', 'Premium joinery', 'Expert craftsmanship'] },
+              { title: 'Restoration & Repair', icon: 'ðŸ”¨', desc: 'Restore vintage pieces to their original beauty', features: ['Expert restoration', 'Period-accurate', 'Preservation focused'] },
+              { title: 'Design Consultation', icon: 'ðŸ’¡', desc: 'Professional guidance from concept to completion', features: ['Free consultation', 'Design expertise', 'Project management'] }
+            ].map((service, i) => (
+              <div key={i} className={`${cardBgClass} p-8 rounded-xl border ${cardBorderClass} hover:shadow-lg hover:-translate-y-2 transition-smooth duration-300`}>
+                <div className="text-6xl mb-4">{service.icon}</div>
+                <h3 className={`text-2xl font-bold ${textClass} mb-3`}>{service.title}</h3>
+                <p className={`${textSecondaryClass} mb-6`}>{service.desc}</p>
+                <ul className="space-y-2">
+                  {service.features.map((feature, j) => (
+                    <li key={j} className={`flex items-center gap-2 ${textTertiaryClass}`}>
+                      <CheckCircle size={18} className={`${accentTextClass} flex-shrink-0`} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Portfolio Section */}
+      <section id="portfolio" className={`py-24 px-4 ${isDarkMode ? 'bg-gray-950' : 'bg-white'} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Recent Projects</h2>
+            <p className={`text-xl ${textSecondaryClass}`}>Showcasing our finest work across residential and commercial spaces</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { title: 'Modern Kitchen Renovation', client: 'Downtown Residence', type: 'Kitchen', image: 'https://allskillscollege.com.au/media/course_categories/gallery/carpentry-gallery-01.jpg' },
+              { title: 'Executive Study Desk', client: 'Corporate Office', type: 'Furniture', image: 'https://cdn.prod.website-files.com/6390e14cc734a931f8327343/679c74b3164f379f7f08c8f8_679c749fc8a9859eed9d7af2_Inner-image-3.jpeg' },
+              { title: 'Master Bedroom Cabinetry', client: 'Luxury Home', type: 'Storage', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOjDcXpOVtZIziObRFggKmK2VcXKPS0bJ2NoTrYnaQZe6oWnWVD6YbLxcA&s=10' },
+              { title: 'Commercial Office Built-ins', client: 'Tech Startup', type: 'Commercial', image: 'https://media.istockphoto.com/id/481628382/photo/carpenter-taking-measurement.jpg?s=612x612&w=0&k=20&c=l2cAPfJL2bGltBasmnqUlsz2OHv6H6bUzjzhx0feOJg=' },
+              { title: 'Walnut Dining Table & Chairs', client: 'Private Collection', type: 'Furniture', image: 'https://prestigestaffing.com.au/images/apprenticeships/carpentry-apprenticeship-mildura-hero.png' },
+              { title: 'Custom Wardrobe Design', client: 'Penthouse Suite', type: 'Storage', image: 'https://images.squarespace-cdn.com/content/v1/594ac91fd1758e19a10c0d10/512896d6-ef97-4a69-a49c-15c70b4e2941/_DSC0748.jpg' }
+            ].map((project, i) => (
+              <div key={i} className={`group ${cardBgClass} rounded-xl shadow-md hover:shadow-lg transition-smooth duration-300 overflow-hidden`}>
+                <div className="relative overflow-hidden h-56">
+                  <img src={project.image} alt={project.title} className="w-full h-full object-cover group-hover:scale-110 transition-smooth duration-500" />
+                  <div className={`absolute top-4 right-4 bg-gradient-to-r ${isDarkMode ? 'from-teal-700 to-teal-600' : 'from-teal-600 to-teal-700'} text-white px-4 py-2 rounded-full text-sm font-semibold`}>
+                    {project.type}
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className={`text-xl font-bold ${textClass} mb-2`}>{project.title}</h3>
+                  <p className={`${textSecondaryClass} text-sm`}>Client: {project.client}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className={`py-24 px-4 ${secondaryBgClass} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Client Testimonials</h2>
+            <p className={`text-xl ${textSecondaryClass}`}>What our satisfied clients have to say</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { name: 'Sarah Johnson', role: 'Homeowner', text: 'JLS Carpentry transformed our kitchen beyond expectations. Outstanding work!', rating: 5 },
+              { name: 'Michael Chen', role: 'Interior Designer', text: 'Working with JLS is a pleasure. Impeccable craftsmanship and reliability.', rating: 5 },
+              { name: 'Emma Williams', role: 'Corporate Client', text: 'The custom built-ins elevated our entire office. Highly recommended!', rating: 5 }
+            ].map((testimonial, i) => (
+              <div key={i} className={`${cardBgClass} p-8 rounded-xl border ${cardBorderClass} hover:shadow-xl transition duration-300`}>
+                <div className="flex gap-1 mb-4">
+                  {Array(testimonial.rating).fill(0).map((_, j) => (
+                    <Star key={j} size={20} className={`${isDarkMode ? 'text-amber-400 fill-amber-400' : 'text-amber-500 fill-amber-500'}`} />
+                  ))}
+                </div>
+                <p className={`${textTertiaryClass} text-lg mb-6 italic`}>"{testimonial.text}"</p>
+                <div>
+                  <p className={`font-bold ${textClass}`}>{testimonial.name}</p>
+                  <p className={`${textSecondaryClass} text-sm`}>{testimonial.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About */}
+      <section id="about" className={`py-24 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-slate-50'} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <img src="https://images.squarespace-cdn.com/content/v1/594ac91fd1758e19a10c0d10/512896d6-ef97-4a69-a49c-15c70b4e2941/_DSC0748.jpg" alt="Master Craftsman" className={`w-full h-96 md:h-[500px] rounded-2xl shadow-lg object-cover ${isDarkMode ? 'border border-gray-700' : 'border border-slate-200'}`} />
+          </div>
+          <div className="space-y-8">
+            <div>
+              <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>About JLS Carpentry</h2>
+              <p className={`text-lg ${textTertiaryClass} leading-relaxed mb-6`}>For over 25 years, JLS Carpentry has been delivering premier bespoke woodworking solutions with unwavering commitment to excellence.</p>
+              <p className={`text-lg ${textTertiaryClass} leading-relaxed`}>Every project begins with listening to our clients and collaborating to bring their vision to life with exceptional craftsmanship.</p>
+            </div>
+            <div className="space-y-4">
+              <h3 className={`text-2xl font-bold mb-6 ${textClass}`}>Why Choose JLS</h3>
+              {[
+                { icon: <Award size={24} className={accentTextClass} />, title: 'Award-Winning', desc: 'Industry-recognized excellence' },
+                { icon: <CheckCircle size={24} className={accentTextClass} />, title: 'Quality Certified', desc: 'Premium materials' },
+                { icon: <Users size={24} className={accentTextClass} />, title: 'Expert Team', desc: '25+ years experience' }
+              ].map((item, i) => (
+                <div key={i} className="flex gap-4">
+                  {item.icon}
+                  <div>
+                    <p className={`font-bold ${textClass}`}>{item.title}</p>
+                    <p className={textSecondaryClass}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section id="contact" className={`py-24 px-4 bg-gradient-to-r ${isDarkMode ? 'from-teal-900 to-slate-900' : 'from-teal-600 to-teal-700'} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold mb-6 text-white">Start Your Project Today</h2>
+            <p className="text-xl text-white/90">Get in touch to discuss your vision</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-12">
+            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/10'} backdrop-blur-sm border border-white/20 p-8 rounded-xl`}>
+              <h3 className="text-2xl font-bold mb-8 text-white">Free Quote</h3>
+              <form className="space-y-4">
+                <input type="text" placeholder="Full Name" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
+                <input type="email" placeholder="Email" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
+                <input type="tel" placeholder="Phone" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
+                <select className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white focus:outline-none focus:border-white transition-smooth`}>
+                  <option>Project Type</option>
+                  <option>Custom Furniture</option>
+                  <option>Cabinetry</option>
+                  <option>Storage</option>
+                </select>
+                <textarea placeholder="Details" rows={4} className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required></textarea>
+                <button type="submit" className="w-full bg-white text-teal-700 font-bold py-3 rounded-lg hover:bg-slate-100 transition">Send</button>
+              </form>
+            </div>
+            <div className="space-y-8">
+              {[
+                { icon: 'ðŸ“ž', label: 'Phone', value: '(555) 123-4567' },
+                { icon: 'ðŸ“§', label: 'Email', value: 'hello@jlscarpentry.com' },
+                { icon: 'ðŸ“', label: 'Location', value: '123 Carpenter St' },
+                { icon: 'â°', label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
+              ].map((contact, i) => (
+                <div key={i} className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/10'} backdrop-blur-sm border border-white/20 p-6 rounded-xl`}>
+                  <p className="text-2xl mb-2">{contact.icon}</p>
+                  <p className="text-sm text-white/80 mb-1">{contact.label}</p>
+                  <p className="font-bold text-white">{contact.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className={`${isDarkMode ? 'bg-gray-950 border-t border-gray-800' : 'bg-slate-900 text-white'} py-12 transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-5 gap-8 mb-8">
+            <div>
+              <h4 className="font-bold text-white mb-4">JLS Carpentry</h4>
+              <p className={isDarkMode ? 'text-gray-400' : 'text-slate-300'}>Premier bespoke woodworking solutions since 1998</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Services</h4>
+              <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Custom Furniture</button></li>
+                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Cabinetry</button></li>
+                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Restoration</button></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Company</h4>
+              <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+                <li><button onClick={() => scrollToSection('about')} className="hover:text-white transition">About</button></li>
+                <li><button onClick={() => scrollToSection('portfolio')} className="hover:text-white transition">Portfolio</button></li>
+                <li><button onClick={() => scrollToSection('testimonials')} className="hover:text-white transition">Testimonials</button></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Contact</h4>
+              <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+                <li>ðŸ“ž (555) 123-4567</li>
+                <li>ðŸ“§ hello@jlscarpentry.com</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Follow</h4>
+              <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+                <li><button className="hover:text-white transition">Instagram</button></li>
+                <li><button className="hover:text-white transition">Facebook</button></li>
+                <li><button className="hover:text-white transition">LinkedIn</button></li>
+              </ul>
+            </div>
+          </div>
+          <div className={`border-t ${isDarkMode ? 'border-gray-800' : 'border-slate-700'} pt-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+            <p>&copy; 2024 JLS Carpentry. All rights reserved. | Crafted with excellence</p>
+          </div>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
