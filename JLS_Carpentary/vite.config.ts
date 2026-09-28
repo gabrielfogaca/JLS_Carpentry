@@ -10,9 +10,11 @@ import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
 export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
+  const figmaBase = process.env.FIGMA_PUBLIC_URL
+  const basePath = figmaBase && !figmaBase.startsWith('http') ? `${figmaBase.replace(/\/$/, '')}/` : '/'
 
   return {
-    base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
+    base: basePath,
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
