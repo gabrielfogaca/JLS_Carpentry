@@ -1,13 +1,121 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, X, ArrowRight, Star, CheckCircle, Award, Users, Moon, Sun } from 'lucide-react'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import Dashboard from './Dashboard'
+import { auth, db, firebaseReady } from './firebase'
+import { DEFAULT_SITE_CONTENT, type SiteContent } from './siteContent'
 
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [view, setView] = useState<'home' | 'dashboard'>('home')
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [siteContent, setSiteContent] = useState<SiteContent>(() => {
+    return DEFAULT_SITE_CONTENT
+  })
+
+  useEffect(() => {
+    if (!auth) {
+      return
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setView(currentUser ? 'dashboard' : 'home')
+    })
+
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (!db) {
+      return
+    }
+
+    const contentRef = doc(db, 'siteContent', 'main')
+
+    const unsubscribe = onSnapshot(
+      contentRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setSiteContent(snapshot.data() as SiteContent)
+        } else {
+          setSiteContent(DEFAULT_SITE_CONTENT)
+        }
+      },
+      () => {
+        setSiteContent(DEFAULT_SITE_CONTENT)
+      },
+    )
+
+    return unsubscribe
+  }, [])
+
+  const handleSaveContent = async (content: SiteContent) => {
+    setSiteContent(content)
+
+    if (!db) {
+      return
+    }
+
+    await setDoc(doc(db, 'siteContent', 'main'), content, { merge: true })
+  }
   
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setIsMenuOpen(false)
+  }
+
+  const handleLogout = async () => {
+    setLoginError('')
+
+    if (auth) {
+      await signOut(auth)
+    }
+
+    setIsLoginModalOpen(false)
+    setView('home')
+  }
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setLoginError('')
+
+    if (!auth || !firebaseReady) {
+      setLoginError('Firebase is not ready yet. Restart the dev server after updating the Firebase config.')
+      return
+    }
+
+    try {
+      setIsSigningIn(true)
+      try {
+        await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
+      } catch (error: unknown) {
+        const authError = error as { code?: string; message?: string }
+        const authCode = authError?.code
+
+        if (authCode === 'auth/user-not-found' || authCode === 'auth/invalid-credential' || authCode === 'auth/wrong-password') {
+          await createUserWithEmailAndPassword(auth, loginEmail, loginPassword)
+        } else if (authCode === 'auth/operation-not-allowed') {
+          throw new Error('Email/password sign-in is disabled in Firebase Authentication.')
+        } else {
+          throw authError
+        }
+      }
+      setIsLoginModalOpen(false)
+      setLoginEmail('')
+      setLoginPassword('')
+      setView('dashboard')
+    } catch (error: unknown) {
+      const authError = error as { message?: string }
+      setLoginError(authError?.message || 'Sign in did not work. Please try again.')
+    } finally {
+      setIsSigningIn(false)
+    }
   }
 
   // Theme classes
@@ -23,6 +131,10 @@ export default function App() {
   const accentBgClass = isDarkMode ? 'bg-teal-900' : 'bg-teal-50'
   const accentTextClass = isDarkMode ? 'text-teal-300' : 'text-teal-700'
   const hoverBgClass = isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-slate-100'
+
+  if (view === 'dashboard') {
+    return <Dashboard isDarkMode={isDarkMode} onLogout={handleLogout} siteContent={siteContent} onSaveContent={handleSaveContent} />
+  }
 
   return (
     <div className={`w-full min-h-screen ${bgClass} ${textClass} transition-colors duration-300`}>
@@ -95,13 +207,13 @@ export default function App() {
             <div>
               <div className={`inline-flex items-center gap-2 ${accentBgClass} ${accentTextClass} px-4 py-2 rounded-full text-sm font-semibold mb-6 ${isDarkMode ? 'border border-teal-700' : 'border border-teal-200'} animate-fade-in-down`}>
                 <Award size={16} />
-                Award-Winning Craftsmanship Since 1998
+                {siteContent.home.eyebrow}
               </div>
               <h1 className={`text-6xl md:text-7xl font-bold leading-tight mb-6 ${textClass}`}>
-                Exceptional <span className={`bg-gradient-to-r ${isDarkMode ? 'from-teal-400 to-cyan-400' : 'from-teal-600 to-teal-700'} bg-clip-text text-transparent`}>Wood Craftsmanship</span>
+                {siteContent.home.title} <span className={`bg-gradient-to-r ${isDarkMode ? 'from-teal-400 to-cyan-400' : 'from-teal-600 to-teal-700'} bg-clip-text text-transparent`}>{siteContent.home.highlight}</span>
               </h1>
               <p className={`text-xl ${textSecondaryClass} leading-relaxed mb-8`}>
-                Transform your vision into reality with premium, handcrafted woodworking solutions. JLS Carpentry combines 25+ years of expertise with meticulous attention to detail.
+                {siteContent.home.description}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up">
@@ -119,9 +231,12 @@ export default function App() {
               </button>
             </div>
             <div className={`grid grid-cols-3 gap-6 pt-8 border-t ${isDarkMode ? 'border-gray-700' : 'border-slate-200'} animate-fade-in-up`}>
-              <div><p className={`text-4xl font-bold ${textClass}`}>25+</p><p className={`${textSecondaryClass} text-sm`}>Years Experience</p></div>
-              <div><p className={`text-4xl font-bold ${textClass}`}>1000+</p><p className={`${textSecondaryClass} text-sm`}>Projects Completed</p></div>
-              <div><p className={`text-4xl font-bold ${textClass}`}>98%</p><p className={`${textSecondaryClass} text-sm`}>Client Satisfaction</p></div>
+              {siteContent.home.stats.map((stat) => (
+                <div key={stat.label}>
+                  <p className={`text-4xl font-bold ${textClass}`}>{stat.value}</p>
+                  <p className={`${textSecondaryClass} text-sm`}>{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -131,22 +246,15 @@ export default function App() {
       <section id="services" className={`py-24 px-4 ${secondaryBgClass} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Our Specialized Services</h2>
-            <p className={`text-xl ${textSecondaryClass} max-w-2xl mx-auto`}>From bespoke furniture to architectural installations, we deliver exceptional craftsmanship that elevates any space</p>
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>{siteContent.services.title}</h2>
+            <p className={`text-xl ${textSecondaryClass} max-w-2xl mx-auto`}>{siteContent.services.subtitle}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { title: 'Custom Furniture Design', icon: 'ðŸª‘', desc: 'Bespoke pieces tailored to your exact specifications', features: ['Made to measure', 'Premium materials', 'Lifetime support'] },
-              { title: 'Kitchen Cabinetry', icon: 'ðŸ ', desc: 'Elegant cabinet solutions that maximize your space', features: ['Custom layouts', 'Hardware options', 'Pro installation'] },
-              { title: 'Storage Solutions', icon: 'ðŸ“¦', desc: 'Organized, beautiful storage that fits perfectly', features: ['Space optimization', 'Custom finishes', 'Integrated lighting'] },
-              { title: 'Architectural Joinery', icon: 'ðŸŽ¨', desc: 'Complex woodwork for unique architectural elements', features: ['Detail oriented', 'Premium joinery', 'Expert craftsmanship'] },
-              { title: 'Restoration & Repair', icon: 'ðŸ”¨', desc: 'Restore vintage pieces to their original beauty', features: ['Expert restoration', 'Period-accurate', 'Preservation focused'] },
-              { title: 'Design Consultation', icon: 'ðŸ’¡', desc: 'Professional guidance from concept to completion', features: ['Free consultation', 'Design expertise', 'Project management'] }
-            ].map((service, i) => (
+            {siteContent.services.items.map((service, i) => (
               <div key={i} className={`${cardBgClass} p-8 rounded-xl border ${cardBorderClass} hover:shadow-lg hover:-translate-y-2 transition-smooth duration-300`}>
                 <div className="text-6xl mb-4">{service.icon}</div>
                 <h3 className={`text-2xl font-bold ${textClass} mb-3`}>{service.title}</h3>
-                <p className={`${textSecondaryClass} mb-6`}>{service.desc}</p>
+                <p className={`${textSecondaryClass} mb-6`}>{service.description}</p>
                 <ul className="space-y-2">
                   {service.features.map((feature, j) => (
                     <li key={j} className={`flex items-center gap-2 ${textTertiaryClass}`}>
@@ -165,18 +273,11 @@ export default function App() {
       <section id="portfolio" className={`py-24 px-4 ${isDarkMode ? 'bg-gray-950' : 'bg-white'} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Recent Projects</h2>
-            <p className={`text-xl ${textSecondaryClass}`}>Showcasing our finest work across residential and commercial spaces</p>
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>{siteContent.portfolio.title}</h2>
+            <p className={`text-xl ${textSecondaryClass}`}>{siteContent.portfolio.subtitle}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { title: 'Modern Kitchen Renovation', client: 'Downtown Residence', type: 'Kitchen', image: 'https://allskillscollege.com.au/media/course_categories/gallery/carpentry-gallery-01.jpg' },
-              { title: 'Executive Study Desk', client: 'Corporate Office', type: 'Furniture', image: 'https://cdn.prod.website-files.com/6390e14cc734a931f8327343/679c74b3164f379f7f08c8f8_679c749fc8a9859eed9d7af2_Inner-image-3.jpeg' },
-              { title: 'Master Bedroom Cabinetry', client: 'Luxury Home', type: 'Storage', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOjDcXpOVtZIziObRFggKmK2VcXKPS0bJ2NoTrYnaQZe6oWnWVD6YbLxcA&s=10' },
-              { title: 'Commercial Office Built-ins', client: 'Tech Startup', type: 'Commercial', image: 'https://media.istockphoto.com/id/481628382/photo/carpenter-taking-measurement.jpg?s=612x612&w=0&k=20&c=l2cAPfJL2bGltBasmnqUlsz2OHv6H6bUzjzhx0feOJg=' },
-              { title: 'Walnut Dining Table & Chairs', client: 'Private Collection', type: 'Furniture', image: 'https://prestigestaffing.com.au/images/apprenticeships/carpentry-apprenticeship-mildura-hero.png' },
-              { title: 'Custom Wardrobe Design', client: 'Penthouse Suite', type: 'Storage', image: 'https://images.squarespace-cdn.com/content/v1/594ac91fd1758e19a10c0d10/512896d6-ef97-4a69-a49c-15c70b4e2941/_DSC0748.jpg' }
-            ].map((project, i) => (
+            {siteContent.portfolio.items.map((project, i) => (
               <div key={i} className={`group ${cardBgClass} rounded-xl shadow-md hover:shadow-lg transition-smooth duration-300 overflow-hidden`}>
                 <div className="relative overflow-hidden h-56">
                   <img src={project.image} alt={project.title} className="w-full h-full object-cover group-hover:scale-110 transition-smooth duration-500" />
@@ -198,15 +299,11 @@ export default function App() {
       <section id="testimonials" className={`py-24 px-4 ${secondaryBgClass} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>Client Testimonials</h2>
-            <p className={`text-xl ${textSecondaryClass}`}>What our satisfied clients have to say</p>
+            <h2 className={`text-5xl font-bold mb-6 ${textClass}`}>{siteContent.testimonials.title}</h2>
+            <p className={`text-xl ${textSecondaryClass}`}>{siteContent.testimonials.subtitle}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Sarah Johnson', role: 'Homeowner', text: 'JLS Carpentry transformed our kitchen beyond expectations. Outstanding work!', rating: 5 },
-              { name: 'Michael Chen', role: 'Interior Designer', text: 'Working with JLS is a pleasure. Impeccable craftsmanship and reliability.', rating: 5 },
-              { name: 'Emma Williams', role: 'Corporate Client', text: 'The custom built-ins elevated our entire office. Highly recommended!', rating: 5 }
-            ].map((testimonial, i) => (
+            {siteContent.testimonials.items.map((testimonial, i) => (
               <div key={i} className={`${cardBgClass} p-8 rounded-xl border ${cardBorderClass} hover:shadow-xl transition duration-300`}>
                 <div className="flex gap-1 mb-4">
                   {Array(testimonial.rating).fill(0).map((_, j) => (
@@ -263,36 +360,56 @@ export default function App() {
             <h2 className="text-5xl font-bold mb-6 text-white">Start Your Project Today</h2>
             <p className="text-xl text-white/90">Get in touch to discuss your vision</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-12">
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/10'} backdrop-blur-sm border border-white/20 p-8 rounded-xl`}>
-              <h3 className="text-2xl font-bold mb-8 text-white">Free Quote</h3>
-              <form className="space-y-4">
-                <input type="text" placeholder="Full Name" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
-                <input type="email" placeholder="Email" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
-                <input type="tel" placeholder="Phone" className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required />
-                <select className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white focus:outline-none focus:border-white transition-smooth`}>
-                  <option>Project Type</option>
-                  <option>Custom Furniture</option>
-                  <option>Cabinetry</option>
-                  <option>Storage</option>
-                </select>
-                <textarea placeholder="Details" rows={4} className={`w-full p-3 ${isDarkMode ? 'bg-gray-900/50' : 'bg-white/10'} border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white transition-smooth`} required></textarea>
-                <button type="submit" className="w-full bg-white text-teal-700 font-bold py-3 rounded-lg hover:bg-slate-100 transition">Send</button>
-              </form>
-            </div>
-            <div className="space-y-8">
-              {[
-                { icon: 'ðŸ“ž', label: 'Phone', value: '(555) 123-4567' },
-                { icon: 'ðŸ“§', label: 'Email', value: 'hello@jlscarpentry.com' },
-                { icon: 'ðŸ“', label: 'Location', value: '123 Carpenter St' },
-                { icon: 'â°', label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
-              ].map((contact, i) => (
-                <div key={i} className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/10'} backdrop-blur-sm border border-white/20 p-6 rounded-xl`}>
-                  <p className="text-2xl mb-2">{contact.icon}</p>
-                  <p className="text-sm text-white/80 mb-1">{contact.label}</p>
-                  <p className="font-bold text-white">{contact.value}</p>
+          <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/10'} backdrop-blur-sm border border-white/20 rounded-2xl p-8 md:p-10`}>
+            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-start">
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-3xl font-bold text-white mb-4">Free Quote</h3>
+                  <p className="text-white/80 text-lg max-w-xl">
+                    Choose the fastest way to reach us and start your project. We respond quickly and can help you move from idea to estimate.
+                  </p>
                 </div>
-              ))}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <a
+                    href="https://wa.me/5551234567?text=Hi%20JLS%20Carpentry,%20I%27d%20like%20a%20quote%20for%20my%20project."
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-white text-teal-700 font-bold py-4 rounded-lg hover:bg-slate-100 transition text-center"
+                  >
+                    Message on WhatsApp
+                  </a>
+                  <a
+                    href="sms:5551234567"
+                    className="w-full border border-white/30 text-white font-bold py-4 rounded-lg hover:bg-white/10 transition text-center"
+                  >
+                    Open Messages
+                  </a>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {['Fast reply', 'Free consultation', 'Custom solutions'].map((item) => (
+                    <div key={item} className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white/90 text-sm font-medium text-center">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  { icon: '📞', label: 'Phone', value: '(555) 123-4567' },
+                  { icon: '✉️', label: 'Email', value: 'hello@jlscarpentry.com' },
+                  { icon: '📍', label: 'Location', value: '123 Carpenter St' },
+                  { icon: '⏰', label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
+                ].map((contact, i) => (
+                  <div key={i} className="rounded-xl border border-white/20 bg-white/10 p-5 text-white">
+                    <p className="text-2xl mb-3">{contact.icon}</p>
+                    <p className="text-sm text-white/80 mb-1">{contact.label}</p>
+                    <p className="font-bold">{contact.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -301,7 +418,7 @@ export default function App() {
       {/* Footer */}
       <footer className={`${isDarkMode ? 'bg-gray-950 border-t border-gray-800' : 'bg-slate-900 text-white'} py-12 transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-5 gap-8 mb-8">
+          <div className="grid md:grid-cols-6 gap-8 mb-8">
             <div>
               <h4 className="font-bold text-white mb-4">JLS Carpentry</h4>
               <p className={isDarkMode ? 'text-gray-400' : 'text-slate-300'}>Premier bespoke woodworking solutions since 1998</p>
@@ -325,8 +442,23 @@ export default function App() {
             <div>
               <h4 className="font-bold text-white mb-4">Contact</h4>
               <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
-                <li>ðŸ“ž (555) 123-4567</li>
-                <li>ðŸ“§ hello@jlscarpentry.com</li>
+                <li>📞 (555) 123-4567</li>
+                <li>✉️ hello@jlscarpentry.com</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Account</h4>
+              <ul className={`space-y-2 ${isDarkMode ? 'text-gray-400' : 'text-slate-300'}`}>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className="hover:text-white transition inline-flex items-center gap-2"
+                  >
+                    <span aria-hidden="true">👤</span>
+                    Login
+                  </button>
+                </li>
               </ul>
             </div>
             <div>
@@ -343,6 +475,91 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close login modal"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsLoginModalOpen(false)}
+          />
+          <div className={`${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-slate-200'} relative z-10 w-full max-w-md rounded-2xl border shadow-2xl p-8`}>
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <p className={`text-sm font-semibold ${accentTextClass} mb-2`}>Member Access</p>
+                <h3 className={`text-3xl font-bold ${textClass}`}>Log in to your account</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLoginModalOpen(false)}
+                className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-slate-100 text-slate-600'} hover:scale-105 transition`}
+                aria-label="Close login dialog"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form className="space-y-4" onSubmit={handleLoginSubmit}>
+              <div>
+                <label htmlFor="login-email" className={`block text-sm font-medium mb-2 ${textSecondaryClass}`}>
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={loginEmail}
+                  onChange={(event) => setLoginEmail(event.target.value)}
+                  className={`w-full rounded-lg border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-teal-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-teal-600'}`}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="login-password" className={`block text-sm font-medium mb-2 ${textSecondaryClass}`}>
+                  Password
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  className={`w-full rounded-lg border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-teal-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-teal-600'}`}
+                />
+              </div>
+
+              {loginError ? (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {loginError}
+                </p>
+              ) : null}
+
+              <div className="flex items-center justify-between gap-4 pt-2">
+                <label className={`inline-flex items-center gap-2 text-sm ${textSecondaryClass}`}>
+                  <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  Remember me
+                </label>
+                <button type="button" className={`text-sm font-medium ${accentTextClass} hover:underline`}>
+                  Forgot password?
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSigningIn}
+                className={`w-full rounded-lg bg-gradient-to-r ${isDarkMode ? 'from-teal-700 to-teal-600' : 'from-teal-600 to-teal-700'} px-4 py-3 font-bold text-white hover:shadow-lg transition`}
+              >
+                {isSigningIn ? 'Signing in...' : 'Sign in'}
+              </button>
+
+              <p className={`text-sm text-center ${textSecondaryClass}`}>
+                New here? Contact us and we’ll help set up your access.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

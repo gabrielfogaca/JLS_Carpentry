@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Deploy Rules",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "deploy:firestore-rules"],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}
