@@ -50,11 +50,28 @@ export type TestimonialsContent = {
   items: TestimonialItem[]
 }
 
+export type InstagramPost = {
+  id: string
+  image: string
+  likes: number
+  comments: number
+}
+
+export type InstagramContent = {
+  handle: string
+  bio: string
+  followerCount: number
+  followingCount: number
+  postCount: number
+  posts: InstagramPost[]
+}
+
 export type SiteContent = {
   home: HomeContent
   services: ServiceContent
   portfolio: PortfolioContent
   testimonials: TestimonialsContent
+  instagram: InstagramContent
 }
 
 export const DEFAULT_SITE_CONTENT: SiteContent = {
@@ -131,6 +148,24 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       { name: 'Sarah Johnson', role: 'Homeowner', text: 'JLS Carpentry transformed our kitchen beyond expectations. Outstanding work!', rating: 5 },
       { name: 'Michael Chen', role: 'Interior Designer', text: 'Working with JLS is a pleasure. Impeccable craftsmanship and reliability.', rating: 5 },
       { name: 'Emma Williams', role: 'Corporate Client', text: 'The custom built-ins elevated our entire office. Highly recommended!', rating: 5 },
+    ],
+  },
+  instagram: {
+    handle: 'jls_carpentry_co',
+    bio: 'Premium Bespoke Carpentry & Woodworking | Custom builds | Design | 25+ years expertise',
+    followerCount: 2800,
+    followingCount: 84,
+    postCount: 150,
+    posts: [
+      { id: '1', image: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=400&h=400&fit=crop', likes: 324, comments: 12 },
+      { id: '2', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop', likes: 456, comments: 18 },
+      { id: '3', image: 'https://images.unsplash.com/photo-1595440707802-9b009979a914?w=400&h=400&fit=crop', likes: 389, comments: 14 },
+      { id: '4', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop', likes: 512, comments: 22 },
+      { id: '5', image: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400&h=400&fit=crop', likes: 478, comments: 19 },
+      { id: '6', image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400&h=400&fit=crop', likes: 345, comments: 11 },
+      { id: '7', image: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=400&h=400&fit=crop', likes: 534, comments: 25 },
+      { id: '8', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop', likes: 401, comments: 16 },
+      { id: '9', image: 'https://images.unsplash.com/photo-1595440707802-9b009979a914?w=400&h=400&fit=crop', likes: 467, comments: 17 },
     ],
   },
 }
