@@ -23,9 +23,17 @@ html {
   scroll-behavior: smooth;
 }
 
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
 body {
-  background-color: #ffffff;
-  color: #111827;
+  background-color: #0a0a0b;
+  background-image: url('/images/bg.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #ffffff;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
