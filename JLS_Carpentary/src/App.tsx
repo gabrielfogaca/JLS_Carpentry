@@ -319,7 +319,7 @@ export default function App() {
                 className="group border border-gray-800 overflow-hidden rounded-lg hover:shadow-lg transition-shadow text-left"
               >
                 <div className="relative h-48 overflow-hidden">
-                  <img src={encodeURI(project.image)} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={project.image} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 bg-amber-600 text-white px-3 py-1 text-xs font-medium rounded">
                     {project.type}
                   </div>
@@ -350,7 +350,7 @@ export default function App() {
 
             <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-800 bg-black">
               <img
-                src={encodeURI(activeProjectImages[activeProjectImageIndex])}
+                src={activeProjectImages[activeProjectImageIndex]}
                 alt={`${activeProject.title} image ${activeProjectImageIndex + 1}`}
                 className="w-full h-full object-contain"
               />
@@ -386,7 +386,7 @@ export default function App() {
                     }`}
                     aria-label={`Open image ${imageIndex + 1}`}
                   >
-                    <img src={encodeURI(image)} alt="Project thumbnail" className="w-full h-full object-cover" />
+                    <img src={image} alt="Project thumbnail" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
