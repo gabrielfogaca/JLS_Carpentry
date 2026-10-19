@@ -39,6 +39,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+img {
+  image-orientation: from-image;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
