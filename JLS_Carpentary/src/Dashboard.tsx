@@ -282,20 +282,6 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
                       className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                     />
                   </label>
-                  <label className="space-y-1 block">
-                    <span className={`text-xs ${mutedClass}`}>Client</span>
-                    <input
-                      value={project.client}
-                      onChange={(event) => applyDraftChange((current) => ({
-                        ...current,
-                        portfolio: {
-                          ...current.portfolio,
-                          items: current.portfolio.items.map((item, itemIndex) => (itemIndex === index ? { ...item, client: event.target.value } : item)),
-                        },
-                      }))}
-                      className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                    />
-                  </label>
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">

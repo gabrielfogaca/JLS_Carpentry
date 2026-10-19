@@ -29,9 +29,10 @@ section[id] {
 
 body {
   background-color: #0a0a0b;
-  background-image: url('/images/bg.jpeg');
-  background-size: cover;
-  background-position: center;
+  background-image: linear-gradient(rgba(10, 10, 11, 0.92), rgba(10, 10, 11, 0.92)), url('/images/Emblema%20de%20Carpintaria%20JLS.png');
+  background-size: auto, 136px 136px;
+  background-repeat: no-repeat, repeat;
+  background-position: center, 0 0;
   background-attachment: fixed;
   color: #ffffff;
   font-family: 'Inter', system-ui, sans-serif;

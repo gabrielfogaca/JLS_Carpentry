@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Menu, X, Star, ArrowUp } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Menu, X, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase'
 import { DEFAULT_SITE_CONTENT, type SiteContent } from './siteContent'
@@ -8,7 +8,6 @@ const NAV_LINKS = [
   { id: 'home', label: 'Home' },
   { id: 'services', label: 'Services' },
   { id: 'portfolio', label: 'Portfolio' },
-  { id: 'testimonials', label: 'Testimonials' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'about', label: 'About' },
 ]
@@ -39,6 +38,8 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [portfolioFilter, setPortfolioFilter] = useState('All')
+  const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(null)
+  const [activeProjectImageIndex, setActiveProjectImageIndex] = useState(0)
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
     return DEFAULT_SITE_CONTENT
   })
@@ -85,6 +86,70 @@ export default function App() {
     activeFilter === 'All'
       ? siteContent.portfolio.items
       : siteContent.portfolio.items.filter((item) => item.type === activeFilter)
+
+  const activeProject = activeProjectIndex === null ? null : filteredPortfolio[activeProjectIndex]
+  const activeProjectImages = useMemo(() => {
+    if (!activeProject) {
+      return []
+    }
+
+    return activeProject.images && activeProject.images.length > 0 ? activeProject.images : [activeProject.image]
+  }, [activeProject])
+
+  const closeProjectGallery = () => {
+    setActiveProjectIndex(null)
+    setActiveProjectImageIndex(0)
+  }
+
+  const openProjectGallery = (projectIndex: number) => {
+    setActiveProjectIndex(projectIndex)
+    setActiveProjectImageIndex(0)
+  }
+
+  const goToNextProjectImage = () => {
+    if (activeProjectImages.length <= 1) {
+      return
+    }
+
+    setActiveProjectImageIndex((current) => (current + 1) % activeProjectImages.length)
+  }
+
+  const goToPreviousProjectImage = () => {
+    if (activeProjectImages.length <= 1) {
+      return
+    }
+
+    setActiveProjectImageIndex((current) => (current - 1 + activeProjectImages.length) % activeProjectImages.length)
+  }
+
+  useEffect(() => {
+    if (!activeProject) {
+      return
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeProjectGallery()
+      }
+
+      if (event.key === 'ArrowRight') {
+        goToNextProjectImage()
+      }
+
+      if (event.key === 'ArrowLeft') {
+        goToPreviousProjectImage()
+      }
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [activeProject, activeProjectImages.length])
 
   return (
     <div className="w-full min-h-screen text-white transition-colors duration-300">
@@ -153,8 +218,8 @@ export default function App() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
             <img 
-              src="https://cdn.prod.website-files.com/6390e14cc734a931f8327343/679c741cfd2f81997c15fb20_Featured-image.jpg" 
-              alt="Premium Carpentry Workshop" 
+              src="/homeimg.png" 
+              alt="JLS Carpentry at work" 
               className="w-full h-96 md:h-[450px] object-cover rounded-lg shadow-xl"
             />
           </div>
@@ -247,49 +312,88 @@ export default function App() {
             ))}
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            {filteredPortfolio.map((project) => (
-              <div key={project.title} className="group border border-gray-800 overflow-hidden rounded-lg hover:shadow-lg transition-shadow">
+            {filteredPortfolio.map((project, projectIndex) => (
+              <button
+                key={project.title}
+                onClick={() => openProjectGallery(projectIndex)}
+                className="group border border-gray-800 overflow-hidden rounded-lg hover:shadow-lg transition-shadow text-left"
+              >
                 <div className="relative h-48 overflow-hidden">
-                  <img src={project.image} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={encodeURI(project.image)} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 bg-amber-600 text-white px-3 py-1 text-xs font-medium rounded">
                     {project.type}
                   </div>
                 </div>
                 <div className="p-4 bg-black/60">
                   <h3 className="text-lg font-light text-white mb-1">{project.title}</h3>
-                  <p className="text-gray-400 text-xs">Client: {project.client}</p>
+                  {project.description && <p className="text-gray-300 text-sm mt-2">{project.description}</p>}
+                  <p className="text-amber-500 text-xs mt-3">View gallery</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="py-20 px-4 bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-16">
-            <h2 className="text-4xl font-display font-semibold mb-3 text-gray-900">{siteContent.testimonials.title}</h2>
-            <p className="text-gray-600">{siteContent.testimonials.subtitle}</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {siteContent.testimonials.items.map((testimonial, i) => (
-              <div key={i} className="border border-gray-200 p-6 rounded-lg bg-gray-50 hover:shadow-md transition-shadow">
-                <div className="flex gap-1 mb-4">
-                  {Array(testimonial.rating).fill(0).map((_, j) => (
-                    <Star key={j} size={16} className="text-amber-600 fill-amber-600" />
-                  ))}
-                </div>
-                <p className="text-gray-700 text-sm mb-6">"{testimonial.text}"</p>
-                <div>
-                  <p className="text-gray-900 text-sm font-light">{testimonial.name}</p>
-                  <p className="text-gray-500 text-xs">{testimonial.role}</p>
-                </div>
+      {activeProject && (
+        <div className="fixed inset-0 z-[60] bg-black/90 p-4 md:p-8" role="dialog" aria-modal="true" aria-label={activeProject.title}>
+          <div className="max-w-6xl mx-auto h-full flex flex-col">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p className="text-amber-500 text-xs uppercase tracking-[0.2em] mb-2">{activeProject.type}</p>
+                <h3 className="text-2xl md:text-3xl font-display text-white">{activeProject.title}</h3>
               </div>
-            ))}
+              <button onClick={closeProjectGallery} className="p-2 rounded border border-gray-700 text-gray-200 hover:text-white hover:border-white transition-colors" aria-label="Close gallery">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-800 bg-black">
+              <img
+                src={encodeURI(activeProjectImages[activeProjectImageIndex])}
+                alt={`${activeProject.title} image ${activeProjectImageIndex + 1}`}
+                className="w-full h-full object-contain"
+              />
+
+              {activeProjectImages.length > 1 && (
+                <>
+                  <button
+                    onClick={goToPreviousProjectImage}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 border border-gray-700 text-white hover:border-amber-500 transition-colors"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={goToNextProjectImage}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 border border-gray-700 text-white hover:border-amber-500 transition-colors"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {activeProjectImages.length > 1 && (
+              <div className="mt-4 grid grid-cols-4 md:grid-cols-8 gap-2">
+                {activeProjectImages.map((image, imageIndex) => (
+                  <button
+                    key={image}
+                    onClick={() => setActiveProjectImageIndex(imageIndex)}
+                    className={`h-16 rounded overflow-hidden border ${
+                      imageIndex === activeProjectImageIndex ? 'border-amber-500' : 'border-gray-700'
+                    }`}
+                    aria-label={`Open image ${imageIndex + 1}`}
+                  >
+                    <img src={encodeURI(image)} alt="Project thumbnail" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      )}
 
       {/* Instagram Section */}
       <section id="instagram" className="py-20 px-4 border-t border-gray-800">
@@ -317,7 +421,7 @@ export default function App() {
       <section id="about" className="py-20 px-4 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <img src="https://images.squarespace-cdn.com/content/v1/594ac91fd1758e19a10c0d10/512896d6-ef97-4a69-a49c-15c70b4e2941/_DSC0748.jpg" alt="Master Craftsman" className="w-full h-96 md:h-[450px] object-cover rounded-lg" />
+            <img src="/images/myself.png" alt="JLS Carpentry founder" className="w-full h-96 md:h-[450px] object-cover rounded-lg grayscale" />
           </div>
           <div className="space-y-6">
             <div>
@@ -415,7 +519,6 @@ export default function App() {
               <ul className="space-y-2 text-gray-400 text-xs">
                 <li><button onClick={() => scrollToSection('about')} className="hover:text-white transition">About</button></li>
                 <li><button onClick={() => scrollToSection('portfolio')} className="hover:text-white transition">Portfolio</button></li>
-                <li><button onClick={() => scrollToSection('testimonials')} className="hover:text-white transition">Testimonials</button></li>
               </ul>
             </div>
             <div>
