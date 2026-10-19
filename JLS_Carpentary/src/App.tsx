@@ -34,6 +34,20 @@ function InstagramIcon({ size = 18 }: { size?: number }) {
   )
 }
 
+function resolveAssetPath(path: string) {
+  if (/^https?:\/\//i.test(path)) {
+    return path
+  }
+
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+
+  try {
+    return `${import.meta.env.BASE_URL}${encodeURI(decodeURI(normalizedPath))}`
+  } catch {
+    return `${import.meta.env.BASE_URL}${encodeURI(normalizedPath)}`
+  }
+}
+
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -223,7 +237,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
             <img 
-              src="/homeimg.png" 
+              src={resolveAssetPath('/homeimg.png')} 
               alt="JLS Carpentry at work" 
               className="w-full h-96 md:h-[450px] object-cover rounded-lg shadow-xl"
             />
@@ -324,7 +338,7 @@ export default function App() {
                 className="group border border-gray-800 overflow-hidden rounded-lg hover:shadow-lg transition-shadow text-left"
               >
                 <div className="relative h-48 overflow-hidden">
-                  <img src={project.image} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={resolveAssetPath(project.image)} alt={project.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 bg-amber-600 text-white px-3 py-1 text-xs font-medium rounded">
                     {project.type}
                   </div>
@@ -355,7 +369,7 @@ export default function App() {
 
             <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-800 bg-black">
               <img
-                src={activeProjectImages[activeProjectImageIndex]}
+                src={resolveAssetPath(activeProjectImages[activeProjectImageIndex])}
                 alt={`${activeProject.title} image ${activeProjectImageIndex + 1}`}
                 className="w-full h-full object-contain"
               />
@@ -391,7 +405,7 @@ export default function App() {
                     }`}
                     aria-label={`Open image ${imageIndex + 1}`}
                   >
-                    <img src={image} alt="Project thumbnail" className="w-full h-full object-cover" />
+                    <img src={resolveAssetPath(image)} alt="Project thumbnail" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -426,7 +440,7 @@ export default function App() {
       <section id="about" className="py-20 px-4 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <img src="/images/myself.png" alt="JLS Carpentry founder" className="w-full h-96 md:h-[450px] object-cover rounded-lg grayscale" />
+            <img src={resolveAssetPath('/images/myself.png')} alt="JLS Carpentry founder" className="w-full h-96 md:h-[450px] object-cover rounded-lg grayscale" />
           </div>
           <div className="space-y-6">
             <div>
