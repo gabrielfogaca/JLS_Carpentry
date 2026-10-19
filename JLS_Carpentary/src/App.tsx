@@ -55,7 +55,12 @@ export default function App() {
       contentRef,
       (snapshot) => {
         if (snapshot.exists()) {
-          setSiteContent(snapshot.data() as SiteContent)
+          const remoteContent = snapshot.data() as Partial<SiteContent>
+          setSiteContent({
+            ...DEFAULT_SITE_CONTENT,
+            ...remoteContent,
+            portfolio: DEFAULT_SITE_CONTENT.portfolio,
+          })
         } else {
           setSiteContent(DEFAULT_SITE_CONTENT)
         }
