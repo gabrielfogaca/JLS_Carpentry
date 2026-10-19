@@ -115,6 +115,10 @@ export default function App() {
     return activeProject.images && activeProject.images.length > 0 ? activeProject.images : [activeProject.image]
   }, [activeProject])
 
+  const activeProjectImageSrc = activeProject
+    ? activeProjectImages[activeProjectImageIndex] ?? activeProject.image
+    : ''
+
   const closeProjectGallery = () => {
     setActiveProjectIndex(null)
     setActiveProjectImageIndex(0)
@@ -369,7 +373,7 @@ export default function App() {
 
             <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-800 bg-black">
               <img
-                src={resolveAssetPath(activeProjectImages[activeProjectImageIndex])}
+                src={resolveAssetPath(activeProjectImageSrc)}
                 alt={`${activeProject.title} image ${activeProjectImageIndex + 1}`}
                 className="w-full h-full object-contain"
               />
