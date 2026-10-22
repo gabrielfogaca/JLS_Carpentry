@@ -13,6 +13,7 @@ const NAV_LINKS = [
 ]
 
 const INSTAGRAM_URL = 'https://instagram.com/jls_carpentry_co'
+const GOOGLE_REVIEW_URL = 'https://g.page/r/REPLACE_WITH_YOUR_GOOGLE_REVIEW_ID/review'
 
 function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
@@ -187,8 +188,16 @@ export default function App() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <button onClick={() => scrollToSection('home')} className="text-2xl font-display tracking-tight text-white">
-              JLS <span className="text-amber-500">Carpentry</span>
+            <button
+              onClick={() => scrollToSection('home')}
+              className="inline-flex items-center"
+              aria-label="Go to home section"
+            >
+              <img
+                src={resolveAssetPath('/images/Emblema de Carpintaria JLS.png')}
+                alt="JLS Carpentry logo"
+                className="h-12 sm:h-14 w-auto object-contain"
+              />
             </button>
 
             {/* Desktop Menu */}
@@ -294,7 +303,6 @@ export default function App() {
           <div className="grid md:grid-cols-3 gap-8">
             {siteContent.services.items.map((service, i) => (
               <div key={i} className="border border-gray-200 p-8 rounded-lg bg-gray-50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                <div className="text-5xl mb-4">{service.icon}</div>
                 <h3 className="text-xl font-light text-gray-900 mb-3">{service.title}</h3>
                 <p className="text-gray-600 text-sm mb-4">{service.description}</p>
                 <ul className="space-y-2">
@@ -485,7 +493,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <a
                   href="https://wa.me/5551234567?text=Hi%20JLS%20Carpentry,%20I%27d%20like%20a%20quote%20for%20my%20project."
                   target="_blank"
@@ -500,18 +508,25 @@ export default function App() {
                 >
                   Open Messages
                 </a>
+                <a
+                  href={GOOGLE_REVIEW_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full border border-amber-500 text-amber-500 font-medium py-3 text-sm hover:bg-amber-500 hover:text-black transition-colors text-center rounded-lg"
+                >
+                  Leave a Google Review
+                </a>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                { icon: '📞', label: 'Phone', value: '(555) 123-4567' },
-                { icon: '✉️', label: 'Email', value: 'josh@jlscarpentry.com.au' },
-                { icon: '📍', label: 'Location', value: '123 Carpenter St' },
-                { icon: '⏰', label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
+                { label: 'Phone', value: '(555) 123-4567' },
+                { label: 'Email', value: 'josh@jlscarpentry.com.au' },
+                { label: 'Location', value: '123 Carpenter St' },
+                { label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
               ].map((contact, i) => (
                 <div key={i} className="border border-gray-800 p-4 rounded-lg bg-black/60 backdrop-blur-sm">
-                  <p className="text-xl mb-2">{contact.icon}</p>
                   <p className="text-gray-400 text-xs mb-1">{contact.label}</p>
                   <p className="text-white text-sm">{contact.value}</p>
                 </div>
@@ -547,8 +562,8 @@ export default function App() {
             <div>
               <h4 className="text-white mb-3 font-light">Contact</h4>
               <ul className="space-y-1 text-gray-400 text-xs">
-                <li>📞 (555) 123-4567</li>
-                <li>✉️ josh@jlscarpentry.com.au</li>
+                <li>(555) 123-4567</li>
+                <li>josh@jlscarpentry.com.au</li>
               </ul>
             </div>
             <div>

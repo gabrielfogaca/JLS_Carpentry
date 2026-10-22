@@ -29,8 +29,8 @@ section[id] {
 
 body {
   background-color: #0a0a0b;
-  background-image: linear-gradient(rgba(10, 10, 11, 0.92), rgba(10, 10, 11, 0.92)), url('/images/Emblema%20de%20Carpintaria%20JLS.png');
-  background-size: auto, 136px 136px;
+  background-image: linear-gradient(rgba(10, 10, 11, 0.92), rgba(10, 10, 11, 0.92)), url('/images/jls-pattern-tile.png');
+  background-size: auto, 96px 96px;
   background-repeat: no-repeat, repeat;
   background-position: center, 0 0;
   background-attachment: fixed;

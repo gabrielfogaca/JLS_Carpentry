@@ -77,14 +77,14 @@ export type SiteContent = {
 
 export const DEFAULT_SITE_CONTENT: SiteContent = {
   home: {
-    eyebrow: 'Award-Winning Craftsmanship Since 1998',
+    eyebrow: 'Bespike Craftsmanship Since 2016',
     title: 'Exceptional',
     highlight: 'Wood Craftsmanship',
     description:
       'Transform your vision into reality with premium, handcrafted woodworking solutions. JLS Carpentry combines 25+ years of expertise with meticulous attention to detail.',
     stats: [
-      { value: '25+', label: 'Years Experience' },
-      { value: '1000+', label: 'Projects Completed' },
+      { value: '10', label: 'Years Experience' },
+      { value: '200', label: 'Projects' },
       { value: '98%', label: 'Client Satisfaction' },
     ],
   },
