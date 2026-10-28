@@ -77,11 +77,11 @@ export type SiteContent = {
 
 export const DEFAULT_SITE_CONTENT: SiteContent = {
   home: {
-    eyebrow: 'Bespike Craftsmanship Since 2016',
-    title: 'Exceptional',
-    highlight: 'Wood Craftsmanship',
+    eyebrow: 'Bespoke Craftsmanship Since 2016',
+    title: 'Premium Home Renovations',
+    highlight: '& Extensions',
     description:
-      'Transform your vision into reality with premium, handcrafted woodworking solutions. JLS Carpentry combines 25+ years of expertise with meticulous attention to detail.',
+      'Ready to upgrade your living space? JLS Carpentry delivers top-tier craftsmanship across a full suite of specialised renovation services. Backed by 10+ years of local expertise, we pride ourselves on transparent communication, reliable timelines, and an uncompromising standard of finish.',
     stats: [
       { value: '10', label: 'Years Experience' },
       { value: '200', label: 'Projects' },
@@ -89,26 +89,26 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     ],
   },
   services: {
-    title: 'Our Specialized Services',
-    subtitle: 'From pergolas and decking to interiors and fine joinery, we deliver practical craftsmanship with premium finishes',
+    title: 'Specialised Renovation Services',
+    subtitle: 'Premium solutions designed to elevate comfort, value, and everyday living.',
     items: [
       {
-        title: 'Pergolas and Outdoor Structures',
+        title: 'Home Extensions',
         icon: '🏗️',
-        description: 'Custom pergolas, framing, and outdoor structures built for durability and clean finish.',
-        features: ['Custom framing', 'Weather-ready materials', 'Integrated roof options'],
+        description: 'Seamlessly expanding your footprint to accommodate growing families.',
+        features: ['Integrated design', 'Structural framing', 'Space-maximising layouts'],
       },
       {
-        title: 'Decking and Stairs',
+        title: 'Alfresco Living',
         icon: '🪵',
-        description: 'Hardwood and composite decking with precise stair detailing and strong sub-frames.',
-        features: ['Spotted Gum and composite', 'Custom stairs', 'Outdoor finishing'],
+        description: 'Custom-built timber decks and functional pergolas perfect for entertaining.',
+        features: ['Custom timber decks', 'Functional pergolas', 'Entertainment-ready builds'],
       },
       {
-        title: 'Kitchen and Interior Joinery',
+        title: 'Kitchen & Bathroom Renovations',
         icon: '🍽️',
-        description: 'Modern kitchens and interior joinery designed for function, storage, and visual impact.',
-        features: ['Cabinet installation', 'Custom layouts', 'Quality hardware'],
+        description: 'Modern, high-end transformations designed for daily luxury.',
+        features: ['Premium finishes', 'Smart layouts', 'Daily-use durability'],
       },
       {
         title: 'Wardrobes and Storage Fitouts',

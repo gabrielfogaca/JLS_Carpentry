@@ -120,6 +120,8 @@ export default function App() {
     ? activeProjectImages[activeProjectImageIndex] ?? activeProject.image
     : ''
 
+  const scrollingReviews = [...siteContent.testimonials.items, ...siteContent.testimonials.items]
+
   const closeProjectGallery = () => {
     setActiveProjectIndex(null)
     setActiveProjectImageIndex(0)
@@ -248,29 +250,43 @@ export default function App() {
       {/* Hero Section */}
       <section id="home" className="pt-32 pb-20 px-4">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <div className="order-2 md:order-1">
+          <div className="order-2 md:order-1 animate-slide-in-left" style={{ animationFillMode: 'both' }}>
             <img 
               src={resolveAssetPath('/homeimg.png')} 
               alt="JLS Carpentry at work" 
-              className="w-full h-96 md:h-[450px] object-cover rounded-lg shadow-xl"
+              className="w-full h-96 md:h-[450px] object-cover rounded-lg shadow-xl hero-image-float"
             />
           </div>
           <div className="order-1 md:order-2 space-y-6">
             <div>
               {siteContent.home.eyebrow && (
-                <p className="text-amber-600 text-xs font-medium uppercase tracking-[0.2em] mb-4">{siteContent.home.eyebrow}</p>
+                <p
+                  className="text-amber-600 text-xs font-medium uppercase tracking-[0.2em] mb-4 animate-fade-in-down"
+                  style={{ animationDelay: '120ms', animationFillMode: 'both' }}
+                >
+                  {siteContent.home.eyebrow}
+                </p>
               )}
-              <h1 className="text-5xl md:text-6xl font-display font-semibold leading-tight mb-4 text-white">
+              <h1
+                className="text-5xl md:text-6xl font-display font-semibold leading-tight mb-4 text-white animate-fade-in-up"
+                style={{ animationDelay: '220ms', animationFillMode: 'both' }}
+              >
                 {siteContent.home.title} <span className="text-amber-600">{siteContent.home.highlight}</span>
               </h1>
-              <p className="text-lg text-gray-300 leading-relaxed">
+              <p
+                className="text-lg text-gray-300 leading-relaxed animate-fade-in-up"
+                style={{ animationDelay: '340ms', animationFillMode: 'both' }}
+              >
                 {siteContent.home.description}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div
+              className="flex flex-col sm:flex-row gap-3 animate-fade-in-up"
+              style={{ animationDelay: '460ms', animationFillMode: 'both' }}
+            >
               <button 
                 onClick={() => scrollToSection('contact')} 
-                className="bg-amber-600 text-white font-medium py-3 px-8 hover:bg-amber-700 transition-colors rounded-lg"
+                className="bg-amber-600 text-white font-medium py-3 px-8 hover:bg-amber-700 transition-colors rounded-lg animate-pulse-glow"
               >
                 Get Your Free Quote
               </button>
@@ -281,7 +297,10 @@ export default function App() {
                 View Portfolio
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-8 pt-8">
+            <div
+              className="grid grid-cols-3 gap-8 pt-8 animate-fade-in-up"
+              style={{ animationDelay: '580ms', animationFillMode: 'both' }}
+            >
               {siteContent.home.stats.map((stat) => (
                 <div key={stat.label}>
                   <p className="text-3xl font-light text-white">{stat.value}</p>
@@ -362,6 +381,41 @@ export default function App() {
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-14 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-8">
+            <div>
+              <p className="text-amber-600 text-xs font-medium uppercase tracking-[0.2em] mb-2">Google Reviews</p>
+              <h3 className="text-3xl font-display font-semibold text-gray-900">What Clients Say After Project Completion</h3>
+            </div>
+          </div>
+
+          <div className="reviews-marquee" aria-label="Client reviews">
+            <div className="reviews-marquee-track">
+              {scrollingReviews.map((review, index) => (
+                <article key={`${review.name}-${index}`} className="reviews-card">
+                  <p className="text-amber-500 text-sm mb-3" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}</p>
+                  <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.text}</p>
+                  <p className="text-gray-900 text-sm font-medium">{review.name}</p>
+                  <p className="text-gray-500 text-xs">{review.role}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <a
+              href={GOOGLE_REVIEW_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center border border-amber-600 text-amber-700 font-medium py-2.5 px-6 text-sm hover:bg-amber-600 hover:text-white transition-colors rounded-lg"
+            >
+              Leave a Google Review
+            </a>
           </div>
         </div>
       </section>
@@ -456,16 +510,16 @@ export default function App() {
           </div>
           <div className="space-y-6">
             <div>
-              <h2 className="text-4xl font-display font-semibold mb-4 text-gray-900">About JLS Carpentry</h2>
-              <p className="text-gray-600 leading-relaxed mb-4">For over 25 years, JLS Carpentry has been delivering premier bespoke woodworking solutions with unwavering commitment to excellence.</p>
-              <p className="text-gray-600 leading-relaxed">Every project begins with listening to our clients and collaborating to bring their vision to life with exceptional craftsmanship.</p>
+              <h2 className="text-4xl font-display font-semibold mb-4 text-gray-900">About Me</h2>
+              <p className="text-gray-600 leading-relaxed mb-4">I founded JLS Carpentry to help local families transform the way they live through high-quality renovations and extensions. With 10+ years of hands-on experience, I focus on practical design, precision workmanship, and finishes that stand the test of time.</p>
+              <p className="text-gray-600 leading-relaxed">From first consultation to final handover, you can expect clear communication, reliable timelines, and a straightforward process built around your goals.</p>
             </div>
             <div className="space-y-3">
               <h3 className="text-xl font-light text-gray-900">Why Choose JLS</h3>
               {[
-                { title: 'Award-Winning', desc: 'Industry-recognized excellence' },
-                { title: 'Quality Certified', desc: 'Premium materials' },
-                { title: 'Expert Team', desc: '25+ years experience' }
+                { title: 'Local Renovation Expertise', desc: '10+ years delivering quality residential upgrades' },
+                { title: 'Transparent Communication', desc: 'Clear updates from planning through completion' },
+                { title: 'Reliable Delivery', desc: 'Realistic timelines and uncompromising finishes' }
               ].map((item, i) => (
                 <div key={i}>
                   <p className="text-gray-900 text-sm font-light">{item.title}</p>
@@ -493,7 +547,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <a
                   href="https://wa.me/5551234567?text=Hi%20JLS%20Carpentry,%20I%27d%20like%20a%20quote%20for%20my%20project."
                   target="_blank"
@@ -507,14 +561,6 @@ export default function App() {
                   className="w-full border border-gray-500 text-white font-medium py-3 text-sm hover:border-gray-300 transition-colors text-center rounded-lg"
                 >
                   Open Messages
-                </a>
-                <a
-                  href={GOOGLE_REVIEW_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full border border-amber-500 text-amber-500 font-medium py-3 text-sm hover:bg-amber-500 hover:text-black transition-colors text-center rounded-lg"
-                >
-                  Leave a Google Review
                 </a>
               </div>
             </div>

@@ -163,6 +163,20 @@ img {
   animation: shimmer 3s infinite;
 }
 
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.hero-image-float {
+  animation: hero-float 6s ease-in-out infinite;
+}
+
 /* Professional glass effect */
 .glass-effect {
   background: rgba(255, 255, 255, 0.7);
@@ -173,4 +187,50 @@ img {
 /* Smooth transition utility */
 .transition-smooth {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes reviews-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.reviews-marquee {
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.reviews-marquee-track {
+  display: flex;
+  gap: 1rem;
+  width: max-content;
+  animation: reviews-scroll 28s linear infinite;
+}
+
+.reviews-marquee:hover .reviews-marquee-track {
+  animation-play-state: paused;
+}
+
+.reviews-card {
+  width: min(360px, calc(100vw - 3rem));
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-image-float,
+  .animate-fade-in-up,
+  .animate-fade-in-down,
+  .animate-slide-in-left,
+  .animate-pulse-glow,
+  .reviews-marquee-track {
+    animation: none !important;
+  }
 }
