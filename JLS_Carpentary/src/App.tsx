@@ -13,7 +13,70 @@ const NAV_LINKS = [
 ]
 
 const INSTAGRAM_URL = 'https://instagram.com/jls_carpentry_co'
-const GOOGLE_REVIEW_URL = 'https://g.page/r/REPLACE_WITH_YOUR_GOOGLE_REVIEW_ID/review'
+const GOOGLE_REVIEW_URL = 'https://g.page/r/CZg4bkaO6lytEBM/review'
+
+type GooglePlaceReview = {
+  name: string
+  role: string
+  text: string
+  rating: number
+}
+
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        places?: {
+          PlacesService: new (attrContainer: Element) => {
+            textSearch: (
+              request: { query: string },
+              callback: (results: Array<{ place_id?: string }> | null, status: string) => void,
+            ) => void
+            getDetails: (
+              request: { placeId: string; fields: string[] },
+              callback: (place: { reviews?: Array<{ author_name?: string; relative_time_description?: string; text?: string; rating?: number }> } | null, status: string) => void,
+            ) => void
+          }
+          PlacesServiceStatus: {
+            OK: string
+          }
+        }
+      }
+    }
+  }
+}
+
+let googleMapsScriptLoader: Promise<void> | null = null
+
+function loadGoogleMapsScript(apiKey: string) {
+  if (window.google?.maps?.places) {
+    return Promise.resolve()
+  }
+
+  if (googleMapsScriptLoader) {
+    return googleMapsScriptLoader
+  }
+
+  googleMapsScriptLoader = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-google-maps="true"]')
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps script.')), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`
+    script.async = true
+    script.defer = true
+    script.dataset.googleMaps = 'true'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Google Maps script.'))
+    document.head.appendChild(script)
+  })
+
+  return googleMapsScriptLoader
+}
 
 function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
@@ -58,6 +121,8 @@ export default function App() {
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
     return DEFAULT_SITE_CONTENT
   })
+  const [googleReviews, setGoogleReviews] = useState<GooglePlaceReview[]>([])
+  const [googleReviewsStatus, setGoogleReviewsStatus] = useState<'loading' | 'ready' | 'missing-config' | 'error'>('loading')
 
   useEffect(() => {
     if (!db) {
@@ -95,6 +160,123 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    const placeId = import.meta.env.VITE_GOOGLE_PLACE_ID
+    const businessQuery = import.meta.env.VITE_GOOGLE_BUSINESS_QUERY
+    const fallbackBusinessQuery = import.meta.env.VITE_GOOGLE_BUSINESS_QUERY_FALLBACK
+    const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY
+    const searchQueries = [businessQuery, fallbackBusinessQuery].filter((query): query is string => Boolean(query?.trim()))
+
+    if (!apiKey || (!placeId && searchQueries.length === 0)) {
+      setGoogleReviewsStatus('missing-config')
+      return
+    }
+
+    let isCancelled = false
+
+    const fetchGoogleReviews = async () => {
+      try {
+        setGoogleReviewsStatus('loading')
+        await loadGoogleMapsScript(apiKey)
+
+        if (!window.google?.maps?.places) {
+          throw new Error('Google Places library unavailable.')
+        }
+
+        const placesService = new window.google.maps.places.PlacesService(document.createElement('div'))
+
+        const resolvePlaceId = () =>
+          new Promise<string>((resolve, reject) => {
+            if (placeId) {
+              resolve(placeId)
+              return
+            }
+
+            if (searchQueries.length === 0) {
+              reject(new Error('Missing Place ID and business queries.'))
+              return
+            }
+
+            const trySearchQuery = (index: number) => {
+              const query = searchQueries[index]
+
+              if (!query) {
+                reject(new Error('Could not resolve Place ID from business queries.'))
+                return
+              }
+
+              placesService.textSearch(
+                { query },
+                (results, status) => {
+                  const foundPlaceId = results?.[0]?.place_id
+
+                  if (status === window.google?.maps?.places?.PlacesServiceStatus.OK && foundPlaceId) {
+                    resolve(foundPlaceId)
+                    return
+                  }
+
+                  trySearchQuery(index + 1)
+                },
+              )
+            }
+
+            trySearchQuery(0)
+          })
+
+        const resolvedPlaceId = await resolvePlaceId()
+
+        placesService.getDetails(
+          {
+            placeId: resolvedPlaceId,
+            fields: ['reviews'],
+          },
+          (place, status) => {
+            if (isCancelled) {
+              return
+            }
+
+            if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !place?.reviews?.length) {
+              setGoogleReviews([])
+              setGoogleReviewsStatus('error')
+              return
+            }
+
+            const reviews = place.reviews
+              .map((review) => {
+                const text = review.text?.trim()
+
+                if (!text) {
+                  return null
+                }
+
+                return {
+                  name: review.author_name?.trim() || 'Google User',
+                  role: review.relative_time_description?.trim() || 'Google Review',
+                  text,
+                  rating: Math.max(1, Math.min(5, Math.round(review.rating ?? 5))),
+                }
+              })
+              .filter((review): review is GooglePlaceReview => review !== null)
+
+            setGoogleReviews(reviews)
+            setGoogleReviewsStatus(reviews.length > 0 ? 'ready' : 'error')
+          },
+        )
+      } catch {
+        if (!isCancelled) {
+          setGoogleReviews([])
+          setGoogleReviewsStatus('error')
+        }
+      }
+    }
+
+    void fetchGoogleReviews()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setIsMenuOpen(false)
@@ -120,7 +302,7 @@ export default function App() {
     ? activeProjectImages[activeProjectImageIndex] ?? activeProject.image
     : ''
 
-  const scrollingReviews = [...siteContent.testimonials.items, ...siteContent.testimonials.items]
+  const scrollingReviews = [...googleReviews, ...googleReviews]
 
   const closeProjectGallery = () => {
     setActiveProjectIndex(null)
@@ -394,18 +576,32 @@ export default function App() {
             </div>
           </div>
 
-          <div className="reviews-marquee" aria-label="Client reviews">
-            <div className="reviews-marquee-track">
-              {scrollingReviews.map((review, index) => (
-                <article key={`${review.name}-${index}`} className="reviews-card">
-                  <p className="text-amber-500 text-sm mb-3" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}</p>
-                  <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.text}</p>
-                  <p className="text-gray-900 text-sm font-medium">{review.name}</p>
-                  <p className="text-gray-500 text-xs">{review.role}</p>
-                </article>
-              ))}
+          {googleReviewsStatus === 'ready' && googleReviews.length > 0 ? (
+            <div className="reviews-marquee" aria-label="Client reviews">
+              <div className="reviews-marquee-track">
+                {scrollingReviews.map((review, index) => (
+                  <article key={`${review.name}-${index}`} className="reviews-card">
+                    <p className="text-amber-500 text-sm mb-3" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}</p>
+                    <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.text}</p>
+                    <p className="text-gray-900 text-sm font-medium">{review.name}</p>
+                    <p className="text-gray-500 text-xs">{review.role}</p>
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : googleReviewsStatus === 'loading' ? (
+            <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+              <p className="text-sm text-gray-600">Loading Google reviews...</p>
+            </div>
+          ) : googleReviewsStatus === 'missing-config' ? (
+            <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+              <p className="text-sm text-gray-600">Missing Google Reviews setup. Add VITE_GOOGLE_PLACES_API_KEY and either VITE_GOOGLE_PLACE_ID or VITE_GOOGLE_BUSINESS_QUERY to your .env file.</p>
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+              <p className="text-sm text-gray-600">Google reviews are unavailable right now. Please check back soon.</p>
+            </div>
+          )}
 
           <div className="mt-8 flex justify-center">
             <a
