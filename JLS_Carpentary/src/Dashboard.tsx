@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   FileText,
@@ -18,10 +18,16 @@ import type { MediaAsset, SiteContent } from './siteContent'
 export type DashboardProps = {
   isDarkMode: boolean
   onLogout: () => void
+  onBackToSite: () => void
   siteContent: SiteContent
   onSaveContent: (content: SiteContent) => Promise<void>
   mediaAssets: MediaAsset[]
-  onUploadMedia: (file: File) => Promise<string>
+  onUploadMedia: (file: File, onProgress: (percent: number) => void) => Promise<string>
+  mediaStatus: 'loading' | 'ready' | 'error'
+  mediaError: string
+  contentStatus: 'loading' | 'ready' | 'error'
+  contentError: string
+  onRetry: () => void
 }
 
 type TabKey = 'home' | 'services' | 'portfolio' | 'testimonials' | 'general'
@@ -40,16 +46,27 @@ function joinLines(values: string[] | undefined): string {
 export default function Dashboard({
   isDarkMode,
   onLogout,
+  onBackToSite,
   siteContent,
   onSaveContent,
   mediaAssets,
   onUploadMedia,
+  mediaStatus,
+  mediaError,
+  contentStatus,
+  contentError,
+  onRetry,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('home')
   const [draft, setDraft] = useState<SiteContent>(siteContent)
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadMessage, setUploadMessage] = useState('')
+  const [messageProjectIndex, setMessageProjectIndex] = useState<number | null>(null)
+  const [saveError, setSaveError] = useState('')
+  const dirty = useRef(false)
+  const revision = useRef(0)
   const [uploadingProjectIndex, setUploadingProjectIndex] = useState<number | null>(null)
   const [activeMediaPicker, setActiveMediaPicker] = useState<{
     projectIndex: number
@@ -57,9 +74,21 @@ export default function Dashboard({
   } | null>(null)
 
   useEffect(() => {
-    setDraft(siteContent)
-    setSaveState('saved')
+    if (!dirty.current) setDraft(siteContent)
   }, [siteContent])
+
+  useEffect(() => {
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (dirty.current || isUploading) event.preventDefault()
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [isUploading])
+
+  const leaveDashboard = (action: () => void) => {
+    if ((dirty.current || isUploading || saveState === 'saving') && !window.confirm('Leave this page? Unsaved changes will be lost and an upload may be interrupted.')) return
+    action()
+  }
 
   const panelClass = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'
   const textClass = isDarkMode ? 'text-white' : 'text-slate-900'
@@ -69,22 +98,38 @@ export default function Dashboard({
   const softCardClass = isDarkMode ? 'bg-gray-950/70 border-gray-800' : 'bg-slate-50 border-slate-200'
 
   const applyDraftChange = (updater: (current: SiteContent) => SiteContent) => {
+    dirty.current = true
+    revision.current++
     setDraft((current) => updater(current))
-    setSaveState('unsaved')
+    setSaveError('')
+    setSaveState((current) => current === 'saving' ? 'saving' : 'unsaved')
   }
 
   const handleSave = async () => {
+    if (isUploading || contentStatus !== 'ready' || saveState === 'saving') return
+    const savedRevision = revision.current
     try {
+      setSaveError('')
       setSaveState('saving')
       await onSaveContent(draft)
-      setSaveState('saved')
-    } catch {
+      if (savedRevision === revision.current) {
+        dirty.current = false
+        setSaveState('saved')
+      } else {
+        setSaveState('unsaved')
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save changes. Your draft has been kept.')
       setSaveState('unsaved')
     }
   }
 
   const handleReset = () => {
+    if (dirty.current && !window.confirm('Discard your unsaved changes?')) return
+    dirty.current = false
+    revision.current++
     setDraft(siteContent)
+    setSaveError('')
     setSaveState('saved')
   }
 
@@ -119,25 +164,28 @@ export default function Dashboard({
   }
 
   const handleProjectUpload = async (projectIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const input = event.currentTarget
+    const file = input.files?.[0]
     if (!file) {
       return
     }
 
     setUploadMessage('')
+    setMessageProjectIndex(projectIndex)
     setIsUploading(true)
+    setUploadProgress(0)
     setUploadingProjectIndex(projectIndex)
 
     try {
-      const url = await onUploadMedia(file)
+      const url = await onUploadMedia(file, setUploadProgress)
       assignProjectImage(projectIndex, url, 'cover')
-      setUploadMessage('Image uploaded and set as project cover.')
-    } catch {
-      setUploadMessage('Upload failed. Check your Firebase Storage permissions.')
+      setUploadMessage('Image uploaded and set as project cover. Click Save changes to publish it.')
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : 'Unable to upload this image. Please try again.')
     } finally {
       setIsUploading(false)
       setUploadingProjectIndex(null)
-      event.target.value = ''
+      input.value = ''
     }
   }
 
@@ -155,6 +203,7 @@ export default function Dashboard({
     <label className="space-y-1 block">
       <span className={`text-xs ${mutedClass}`}>{label}</span>
       <select
+        disabled={mediaStatus !== 'ready'}
         value={imageOptions.some((item) => item.value === value) ? value : ''}
         onChange={(event) => {
           if (event.target.value) {
@@ -163,7 +212,7 @@ export default function Dashboard({
         }}
         className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
       >
-        <option value="">Select an uploaded image</option>
+        <option value="">{mediaStatus === 'loading' ? 'Loading image library...' : mediaStatus === 'error' ? 'Image library unavailable' : imageOptions.length === 0 ? 'Upload an image in Portfolio first' : 'Select an uploaded image'}</option>
         {imageOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -249,7 +298,7 @@ export default function Dashboard({
 
           <div className="grid md:grid-cols-3 gap-4">
             {draft.home.stats.map((stat, index) => (
-              <div key={stat.label + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Stat {index + 1}</p>
                 <label className="space-y-1 block">
                   <span className={`text-xs ${mutedClass}`}>Value</span>
@@ -311,7 +360,7 @@ export default function Dashboard({
 
           <div className="grid xl:grid-cols-2 gap-4">
             {draft.services.items.map((service, index) => (
-              <div key={service.title + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Service {index + 1}</p>
                 <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">
@@ -405,15 +454,9 @@ export default function Dashboard({
             </label>
           </div>
 
-          {uploadMessage && (
-            <div className={`rounded-lg border px-3 py-2 text-xs ${softCardClass}`}>
-              {uploadMessage}
-            </div>
-          )}
-
           <div className="grid gap-4">
             {draft.portfolio.items.map((project, index) => (
-              <div key={project.title + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-teal-600">Project {index + 1}</p>
                   <label className="inline-flex items-center gap-2 text-xs">
@@ -513,10 +556,10 @@ export default function Dashboard({
                 <div className="flex flex-wrap gap-2">
                   <label className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-teal-700 transition-colors">
                     <Upload size={14} />
-                    {isUploading && uploadingProjectIndex === index ? 'Uploading...' : 'Upload to this project'}
+                    {isUploading && uploadingProjectIndex === index ? `Uploading... ${uploadProgress}%` : 'Upload to this project'}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                       className="hidden"
                       onChange={(event) => {
                         void handleProjectUpload(index, event)
@@ -554,19 +597,36 @@ export default function Dashboard({
                   </button>
                 </div>
 
+                {isUploading && uploadingProjectIndex === index && (
+                  <div role="status" className="space-y-2 text-sm">
+                    <p>{uploadProgress === 0 ? 'Preparing upload. Checking your connection and library access...' : uploadProgress === 100 ? 'Upload complete. Adding image to the library...' : `Uploading image: ${uploadProgress}%`}</p>
+                    <progress value={uploadProgress} max={100} aria-label="Image upload progress" className="w-full accent-teal-600" />
+                  </div>
+                )}
+
+                {uploadMessage && messageProjectIndex === index && (
+                  <p role="status" className={`rounded-lg border px-3 py-2 text-sm ${softCardClass}`}>{uploadMessage}</p>
+                )}
+
                 {activeMediaPicker?.projectIndex === index && (
                   <div className={`rounded-xl border ${softCardClass} p-3 space-y-3`}>
                     <p className="text-xs text-teal-600 font-semibold">
                       {activeMediaPicker.mode === 'cover' ? 'Select a cover image' : 'Select an image to add to gallery'}
                     </p>
+                    {mediaStatus === 'loading' && <p role="status" className={`text-sm ${mutedClass}`}>Loading image library...</p>}
+                    {mediaStatus === 'error' && <div role="alert" className="text-sm"><p>{mediaError}</p><button type="button" onClick={onRetry} className="mt-2 underline">Try again</button></div>}
+                    {mediaStatus === 'ready' && mediaAssets.length === 0 && <p className={`text-sm ${mutedClass}`}>Your library is empty. Use Upload to this project to add your first image.</p>}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-56 overflow-auto pr-1">
                       {mediaAssets.map((asset) => (
                         <button
                           key={asset.id}
                           type="button"
+                          aria-label={activeMediaPicker.mode === 'cover' ? `Select ${asset.name} as cover` : `Add ${asset.name} to gallery`}
+                          aria-pressed={activeMediaPicker.mode === 'cover' ? project.image === asset.url : (project.images ?? []).includes(asset.url)}
                           onClick={() => {
                             assignProjectImage(index, asset.url, activeMediaPicker.mode)
                             setActiveMediaPicker(null)
+                            setMessageProjectIndex(index)
                             setUploadMessage(
                               activeMediaPicker.mode === 'cover'
                                 ? 'Cover image selected from library.'
@@ -632,7 +692,7 @@ export default function Dashboard({
 
           <div className="grid xl:grid-cols-3 gap-4">
             {draft.testimonials.items.map((testimonial, index) => (
-              <div key={testimonial.name + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Testimonial {index + 1}</p>
                 <label className="space-y-1 block">
                   <span className={`text-xs ${mutedClass}`}>Name</span>
@@ -709,6 +769,10 @@ export default function Dashboard({
         <div className="space-y-8">
           <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
             <h3 className="text-lg font-semibold">Instagram section</h3>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Instagram username (without @)</span>
+              <input value={draft.instagram.handle} onChange={(event) => applyDraftChange((current) => ({ ...current, instagram: { ...current.instagram, handle: event.target.value.replace(/^@/, '').trim() } }))} className={`w-full rounded-lg border px-3 py-2 ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`} />
+            </label>
             <div className="grid md:grid-cols-2 gap-3">
               <label className="space-y-1 block">
                 <span className={`text-xs ${mutedClass}`}>Title</span>
@@ -789,7 +853,7 @@ export default function Dashboard({
             </label>
             <div className="grid md:grid-cols-3 gap-3">
               {draft.about.highlights.map((highlight, index) => (
-                <div key={highlight.title + index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
+                <div key={index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
                   <p className="text-xs font-semibold text-teal-600">Highlight {index + 1}</p>
                   <input
                     value={highlight.title}
@@ -907,7 +971,7 @@ export default function Dashboard({
             </label>
             <div className="grid md:grid-cols-2 gap-3">
               {draft.contact.cards.map((card, index) => (
-                <div key={card.label + index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
+                <div key={index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
                   <input
                     value={card.label}
                     onChange={(event) => applyDraftChange((current) => ({
@@ -1036,7 +1100,7 @@ export default function Dashboard({
           </div>
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => leaveDashboard(onBackToSite)}
             className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700 transition"
           >
             <ArrowLeft size={18} />
@@ -1099,6 +1163,7 @@ export default function Dashboard({
                   <button
                     type="button"
                     onClick={handleReset}
+                    disabled={isUploading || saveState === 'saving' || contentStatus !== 'ready'}
                     className={`inline-flex items-center gap-2 rounded-lg border px-4 py-3 font-semibold transition ${isDarkMode ? 'border-gray-800 text-white hover:bg-gray-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`}
                   >
                     <RefreshCcw size={16} />
@@ -1107,7 +1172,7 @@ export default function Dashboard({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saveState === 'saving'}
+                    disabled={saveState === 'saving' || isUploading || contentStatus !== 'ready'}
                     className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 transition"
                   >
                     <Save size={16} />
@@ -1132,7 +1197,13 @@ export default function Dashboard({
                 ))}
               </div>
 
-              {renderTabContent()}
+              {contentStatus === 'loading' && <p role="status">Loading website content...</p>}
+              {contentStatus === 'error' && <div role="alert" className="mb-4 space-y-2 text-sm"><p>{contentError}</p><p>Your draft has been kept. Loading must succeed before you can save.</p><button type="button" onClick={onRetry} className="underline">Try again</button></div>}
+              {saveError && <p role="alert" className="mb-4 text-sm text-red-500">{saveError}</p>}
+              {isUploading && <p role="status" className="mb-4 text-sm">Image upload in progress ({uploadProgress}%). Save changes will be available when it finishes.</p>}
+              <fieldset disabled={contentStatus !== 'ready'} className="min-w-0 space-y-4 disabled:opacity-60">
+                {renderTabContent()}
+              </fieldset>
             </section>
           </main>
         </div>
@@ -1140,7 +1211,7 @@ export default function Dashboard({
 
       <button
         type="button"
-        onClick={onLogout}
+        onClick={() => leaveDashboard(onLogout)}
         className={`fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full px-5 py-3 font-semibold shadow-lg transition ${isDarkMode ? 'bg-gray-900 text-white hover:bg-gray-800 border border-gray-800' : 'bg-white text-slate-900 hover:bg-slate-100 border border-slate-200'}`}
       >
         <LogOut size={18} />

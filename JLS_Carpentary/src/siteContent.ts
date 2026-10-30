@@ -122,6 +122,7 @@ export type MediaAsset = {
   name: string
   url: string
   createdAt: number
+  storagePath?: string
 }
 
 export type SiteContent = {

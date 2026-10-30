@@ -19,7 +19,6 @@ const requiredKeys = [
   firebaseConfig.authDomain,
   firebaseConfig.databaseURL,
   firebaseConfig.projectId,
-  firebaseConfig.storageBucket,
   firebaseConfig.messagingSenderId,
   firebaseConfig.appId,
 ]
@@ -37,3 +36,5 @@ export const auth = app ? getAuth(app) : null
 export const realtimeDatabase = app ? getDatabase(app) : null
 
 export const storage = app ? getStorage(app) : null
+
+if (storage) storage.maxUploadRetryTime = 60_000

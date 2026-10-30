@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Menu, X, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
-import { onValue, push, ref, set } from 'firebase/database'
-import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+import { onIdTokenChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { onValue, ref, set } from 'firebase/database'
 import Dashboard from './Dashboard'
 import { auth, firebaseReady, realtimeDatabase, storage } from './firebase'
 import { DEFAULT_SITE_CONTENT, mergeSiteContent, type MediaAsset, type SiteContent } from './siteContent'
+import { firebaseErrorMessage } from './firebaseErrors'
+import { uploadMedia } from './mediaUpload'
+import { uploadCloudinaryMedia } from './cloudinaryUpload'
 
 const NAV_LINKS = [
   { id: 'home', label: 'Home' },
@@ -125,12 +127,18 @@ export default function App() {
   const [activeProjectImageIndex, setActiveProjectImageIndex] = useState(0)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authStatus, setAuthStatus] = useState<'loading' | 'ready'>(() => (auth ? 'loading' : 'ready'))
+  const [adminStatus, setAdminStatus] = useState<'checking' | 'allowed' | 'denied' | 'error'>('checking')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
     return DEFAULT_SITE_CONTENT
   })
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([])
+  const [mediaStatus, setMediaStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [mediaError, setMediaError] = useState('')
+  const [libraryRetry, setLibraryRetry] = useState(0)
+  const [contentStatus, setContentStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [contentError, setContentError] = useState('')
   const [googleReviews, setGoogleReviews] = useState<GooglePlaceReview[]>([])
   const [googleReviewsStatus, setGoogleReviewsStatus] = useState<'loading' | 'ready' | 'missing-config' | 'error'>('loading')
 
@@ -149,16 +157,33 @@ export default function App() {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    let revision = 0
+    let activeUid: string | null = null
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      const tokenRevision = ++revision
       setCurrentUser(user)
+      // Refreshing a token must not unmount the editor and discard its draft.
+      if (!user || activeUid !== user.uid) setAdminStatus('checking')
+      activeUid = user?.uid ?? null
+      try {
+        const token = user ? await user.getIdTokenResult() : null
+        if (revision !== tokenRevision) return
+        setAdminStatus(token?.claims.admin === true ? 'allowed' : 'denied')
+      } catch (error) {
+        console.error('Unable to verify administrator access:', error)
+        if (revision !== tokenRevision) return
+        setAdminStatus('error')
+      }
       setAuthStatus('ready')
     })
 
-    return unsubscribe
+    return () => { revision++; unsubscribe() }
   }, [])
 
   useEffect(() => {
     if (!realtimeDatabase) {
+      setContentStatus('error')
+      setContentError('Website content is not connected. Contact the project owner.')
       return
     }
 
@@ -173,23 +198,31 @@ export default function App() {
         } else {
           setSiteContent(DEFAULT_SITE_CONTENT)
         }
+        setContentStatus('ready')
+        setContentError('')
       },
-      () => {
-        setSiteContent(DEFAULT_SITE_CONTENT)
+      (error) => {
+        console.error('Website content subscription failed:', error)
+        setContentStatus('error')
+        setContentError(firebaseErrorMessage(error, 'load website content'))
       },
     )
 
     return unsubscribe
-  }, [])
+  }, [currentUser?.uid, libraryRetry])
 
   useEffect(() => {
-    if (!realtimeDatabase) {
+    if (!realtimeDatabase || !currentUser || adminStatus !== 'allowed' || currentPath !== ADMIN_PATH) {
+      setMediaAssets([])
       return
     }
 
+    setMediaStatus('loading')
+    setMediaError('')
     const mediaRef = ref(realtimeDatabase, 'mediaLibrary')
 
     const unsubscribe = onValue(mediaRef, (snapshot) => {
+      setMediaStatus('ready')
       if (!snapshot.exists()) {
         setMediaAssets([])
         return
@@ -201,10 +234,15 @@ export default function App() {
         .sort((a, b) => b.createdAt - a.createdAt)
 
       setMediaAssets(assets)
+    }, (error) => {
+      console.error('Media library subscription failed:', error)
+      setMediaAssets([])
+      setMediaStatus('error')
+      setMediaError(firebaseErrorMessage(error, 'load the image library'))
     })
 
     return unsubscribe
-  }, [])
+  }, [currentUser?.uid, adminStatus, currentPath, libraryRetry])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 400)
@@ -352,8 +390,11 @@ export default function App() {
     try {
       await signInWithEmailAndPassword(auth, email, password)
       navigateTo(ADMIN_PATH, true)
-    } catch {
-      setLoginError('Invalid credentials. Please verify your email and password.')
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      setLoginError(code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password'
+        ? 'Invalid credentials. Please verify your email and password.'
+        : firebaseErrorMessage(error, 'sign in'))
     } finally {
       setIsLoggingIn(false)
     }
@@ -372,30 +413,35 @@ export default function App() {
       throw new Error('Realtime Database is not configured.')
     }
 
-    await set(ref(realtimeDatabase, 'siteContent/main'), content)
+    if (!auth?.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error('Administrator access is required to save changes.')
+    }
+    if (contentStatus !== 'ready') {
+      throw new Error('Wait until website content is loaded before saving. Your draft has been kept.')
+    }
+    try {
+      await set(ref(realtimeDatabase, 'siteContent/main'), content)
+    } catch (error) {
+      console.error('Website content save failed:', error)
+      throw new Error(firebaseErrorMessage(error, 'save website content'))
+    }
 
     setSiteContent(content)
   }
 
-  const handleUploadMedia = async (file: File) => {
-    if (!storage || !realtimeDatabase) {
-      throw new Error('Firebase Storage or Realtime Database is not configured.')
+  const handleUploadMedia = async (file: File, onProgress: (percent: number) => void) => {
+    if (!realtimeDatabase) {
+      throw new Error('Realtime Database is not configured.')
     }
 
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`
-    const uploadedFileRef = storageRef(storage, `site-media/${fileName}`)
-
-    await uploadBytes(uploadedFileRef, file)
-    const url = await getDownloadURL(uploadedFileRef)
-
-    const entryRef = push(ref(realtimeDatabase, 'mediaLibrary'))
-    await set(entryRef, {
-      name: file.name,
-      url,
-      createdAt: Date.now(),
-    })
-
-    return url
+    if (!auth?.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error('Administrator access is required to upload images.')
+    }
+    if (import.meta.env.VITE_MEDIA_PROVIDER === 'cloudinary') {
+      return uploadCloudinaryMedia(auth.currentUser, realtimeDatabase, file, onProgress)
+    }
+    if (!storage) throw new Error('Firebase Storage is not configured.')
+    return uploadMedia(storage, realtimeDatabase, file, onProgress)
   }
 
   const isLoginRoute = currentPath === '/login'
@@ -406,51 +452,6 @@ export default function App() {
       navigateTo(ADMIN_PATH, true)
     }
   }, [isLoginRoute, currentUser])
-
-  if (isAdminRoute) {
-    if (authStatus === 'loading') {
-      return (
-        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
-          <p className="text-sm text-slate-300">Loading authentication...</p>
-        </div>
-      )
-    }
-
-    if (!currentUser) {
-      return (
-        <LoginScreen
-          isFirebaseReady={firebaseReady}
-          isSubmitting={isLoggingIn}
-          errorMessage={loginError}
-          onSubmit={handleLogin}
-          onBackToSite={() => navigateTo('/', true)}
-        />
-      )
-    }
-
-    return (
-      <Dashboard
-        isDarkMode
-        onLogout={handleLogout}
-        siteContent={siteContent}
-        onSaveContent={handleSaveContent}
-        mediaAssets={mediaAssets}
-        onUploadMedia={handleUploadMedia}
-      />
-    )
-  }
-
-  if (isLoginRoute) {
-    return (
-      <LoginScreen
-        isFirebaseReady={firebaseReady}
-        isSubmitting={isLoggingIn}
-        errorMessage={loginError}
-        onSubmit={handleLogin}
-        onBackToSite={() => navigateTo('/', true)}
-      />
-    )
-  }
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -508,7 +509,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!activeProject) {
+    if (!activeProject || isAdminRoute || isLoginRoute) {
       return
     }
 
@@ -534,7 +535,73 @@ export default function App() {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [activeProject, activeProjectImages.length])
+  }, [activeProject, activeProjectImages.length, isAdminRoute, isLoginRoute])
+
+  if (isAdminRoute) {
+    if (authStatus === 'loading' || (currentUser && adminStatus === 'checking')) {
+      return (
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
+          <p className="text-sm text-slate-300">Loading authentication...</p>
+        </div>
+      )
+    }
+
+    if (!currentUser) {
+      return (
+        <LoginScreen
+          isFirebaseReady={firebaseReady}
+          isSubmitting={isLoggingIn}
+          errorMessage={loginError}
+          onSubmit={handleLogin}
+          onBackToSite={() => navigateTo('/', true)}
+        />
+      )
+    }
+
+    if (adminStatus !== 'allowed') {
+      return (
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
+          <div className="max-w-md space-y-4">
+            <h1 className="text-2xl font-semibold">{adminStatus === 'error' ? 'Unable to verify access' : 'Administrator access required'}</h1>
+            <p className="text-slate-300">{adminStatus === 'error' ? 'Check your connection and try again.' : 'This account does not have permission to edit the website. Contact the project owner.'}</p>
+            <button className="rounded bg-teal-700 px-4 py-2" onClick={() => { void auth?.currentUser?.getIdToken(true).catch(() => setAdminStatus('error')) }}>Check access again</button>
+            <button className="block underline" onClick={() => { void handleLogout() }}>Sign out</button>
+            <button className="block underline" onClick={() => navigateTo('/', true)}>Back to site</button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <Dashboard
+        isDarkMode
+        onLogout={handleLogout}
+        onBackToSite={() => navigateTo('/', true)}
+        siteContent={siteContent}
+        onSaveContent={handleSaveContent}
+        mediaAssets={mediaAssets}
+        onUploadMedia={handleUploadMedia}
+        mediaStatus={mediaStatus}
+        mediaError={mediaError}
+        contentStatus={contentStatus}
+        contentError={contentError}
+        onRetry={() => setLibraryRetry((value) => value + 1)}
+      />
+    )
+  }
+
+  if (isLoginRoute) {
+    return (
+      <LoginScreen
+        isFirebaseReady={firebaseReady}
+        isSubmitting={isLoggingIn}
+        errorMessage={loginError}
+        onSubmit={handleLogin}
+        onBackToSite={() => navigateTo('/', true)}
+      />
+    )
+  }
+
 
   return (
     <div className="w-full min-h-screen text-white transition-colors duration-300">
@@ -772,7 +839,7 @@ export default function App() {
             </div>
           ) : googleReviewsStatus === 'missing-config' ? (
             <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-              <p className="text-sm text-gray-600">Missing Google Reviews setup. Add VITE_GOOGLE_PLACES_API_KEY and either VITE_GOOGLE_PLACE_ID or VITE_GOOGLE_BUSINESS_QUERY to your .env file.</p>
+              <p className="text-sm text-gray-600">Google reviews are unavailable right now. Please check back soon.</p>
             </div>
           ) : (
             <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">

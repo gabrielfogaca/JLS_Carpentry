@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "siteContent": {
+      "main": {
+        ".read": true,
+        ".write": "auth != null && auth.token.admin === true && newData.exists()",
+        ".validate": "newData.hasChildren(['home', 'services', 'portfolio', 'testimonials', 'instagram', 'about', 'contact', 'footer'])"
+      }
+    },
+    "mediaLibrary": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".write": "auth != null && auth.token.admin === true",
+      ".indexOn": ["createdAt"],
+      "$assetId": {
+        ".validate": "newData.hasChildren(['name', 'url', 'createdAt'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0" },
+        "url": { ".validate": "newData.isString() && newData.val().beginsWith('https://')" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "storagePath": { ".validate": "newData.isString() && newData.val().beginsWith('site-media/')" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
