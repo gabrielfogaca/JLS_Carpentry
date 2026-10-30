@@ -21,6 +21,19 @@ async function portfolio(page: Page) {
   await page.getByRole('button', { name: 'Portfolio', exact: true }).first().click()
 }
 
+test('saves formatted contact numbers and keeps correct public links after reload', async ({ page }) => {
+  await login(page)
+  await page.getByRole('button', { name: 'General', exact: true }).first().click()
+  await page.getByLabel('WhatsApp number', { exact: true }).fill('+61 450 973 980')
+  await page.getByLabel('SMS number', { exact: true }).fill('+61 450 973 980')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Back to site', exact: true }).click()
+  await page.reload()
+  await expect(page.getByRole('link', { name: 'Message on WhatsApp', exact: true })).toHaveAttribute('href', /^https:\/\/wa\.me\/61450973980\?text=/)
+  await expect(page.getByRole('link', { name: 'Open Messages', exact: true })).toHaveAttribute('href', 'sms:+61450973980')
+})
+
 test('navigates between public site, login and admin without changing Hook order', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

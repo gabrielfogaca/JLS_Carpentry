@@ -14,16 +14,19 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
-const requiredKeys = [
-  firebaseConfig.apiKey,
-  firebaseConfig.authDomain,
-  firebaseConfig.databaseURL,
-  firebaseConfig.projectId,
-  firebaseConfig.messagingSenderId,
-  firebaseConfig.appId,
-]
+const requiredKeys = {
+  VITE_FIREBASE_API_KEY: firebaseConfig.apiKey,
+  VITE_FIREBASE_AUTH_DOMAIN: firebaseConfig.authDomain,
+  VITE_FIREBASE_DATABASE_URL: firebaseConfig.databaseURL,
+  VITE_FIREBASE_PROJECT_ID: firebaseConfig.projectId,
+  VITE_FIREBASE_MESSAGING_SENDER_ID: firebaseConfig.messagingSenderId,
+  VITE_FIREBASE_APP_ID: firebaseConfig.appId,
+}
 
-export const firebaseReady = requiredKeys.every(Boolean)
+export const missingFirebaseVariables = Object.entries(requiredKeys)
+  .filter(([, value]) => !value?.trim())
+  .map(([name]) => name)
+export const firebaseReady = missingFirebaseVariables.length === 0
 
 const app = firebaseReady
   ? getApps().length

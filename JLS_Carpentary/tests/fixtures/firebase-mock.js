@@ -81,3 +81,4 @@ export function uploadBytesResumable(reference, file) {
 }
 export async function getDownloadURL(reference) { return `http://127.0.0.1:8443/favicon.png?upload=${encodeURIComponent(reference.fullPath)}` }
 export async function deleteObject(reference) { state.deleted.push(reference.fullPath) }
+export const missingFirebaseVariables = []

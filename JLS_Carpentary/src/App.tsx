@@ -3,11 +3,12 @@ import { Menu, X, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { onIdTokenChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { onValue, ref, set } from 'firebase/database'
 import Dashboard from './Dashboard'
-import { auth, firebaseReady, realtimeDatabase, storage } from './firebase'
+import { auth, firebaseReady, missingFirebaseVariables, realtimeDatabase, storage } from './firebase'
 import { DEFAULT_SITE_CONTENT, mergeSiteContent, type MediaAsset, type SiteContent } from './siteContent'
 import { firebaseErrorMessage } from './firebaseErrors'
 import { uploadMedia } from './mediaUpload'
 import { uploadCloudinaryMedia } from './cloudinaryUpload'
+import { smsLink, whatsappLink } from './contactLinks'
 
 const NAV_LINKS = [
   { id: 'home', label: 'Home' },
@@ -985,7 +986,7 @@ export default function App() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <a
-                  href={`https://wa.me/${encodeURIComponent(siteContent.contact.whatsappNumber)}?text=${encodeURIComponent(siteContent.contact.whatsappMessage)}`}
+                  href={whatsappLink(siteContent.contact.whatsappNumber, siteContent.contact.whatsappMessage)}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-amber-600 text-white font-medium py-3 text-sm hover:bg-amber-700 transition-colors text-center rounded-lg"
@@ -993,7 +994,7 @@ export default function App() {
                   {siteContent.contact.whatsappButtonLabel}
                 </a>
                 <a
-                  href={`sms:${siteContent.contact.smsNumber}`}
+                  href={smsLink(siteContent.contact.smsNumber)}
                   className="w-full border border-gray-500 text-white font-medium py-3 text-sm hover:border-gray-300 transition-colors text-center rounded-lg"
                 >
                   {siteContent.contact.smsButtonLabel}
@@ -1105,7 +1106,7 @@ function LoginScreen({ isFirebaseReady, isSubmitting, errorMessage, onSubmit, on
 
         {!isFirebaseReady && (
           <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-            Firebase is not fully configured in environment variables.
+            Firebase configuration is missing: {missingFirebaseVariables.join(', ')}. Add these variables in Vercel and redeploy.
           </div>
         )}
 
