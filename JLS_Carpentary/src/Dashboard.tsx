@@ -1,15 +1,30 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BarChart3, CalendarDays, FileText, Image as ImageIcon, LayoutDashboard, LogOut, MessageSquareText, RefreshCcw, Save, Settings, Sparkles, UserRound } from 'lucide-react'
-import type { SiteContent } from './siteContent'
+import {
+  ArrowLeft,
+  FileText,
+  Image as ImageIcon,
+  LayoutDashboard,
+  LogOut,
+  MessageSquareText,
+  RefreshCcw,
+  Save,
+  Settings,
+  Sparkles,
+  Upload,
+  UserRound,
+} from 'lucide-react'
+import type { MediaAsset, SiteContent } from './siteContent'
 
 export type DashboardProps = {
   isDarkMode: boolean
   onLogout: () => void
   siteContent: SiteContent
   onSaveContent: (content: SiteContent) => Promise<void>
+  mediaAssets: MediaAsset[]
+  onUploadMedia: (file: File) => Promise<string>
 }
 
-type TabKey = 'home' | 'services' | 'portfolio' | 'testimonials'
+type TabKey = 'home' | 'services' | 'portfolio' | 'testimonials' | 'general'
 
 function splitLines(value: string): string[] {
   return value
@@ -18,10 +33,28 @@ function splitLines(value: string): string[] {
     .filter(Boolean)
 }
 
-export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveContent }: DashboardProps) {
+function joinLines(values: string[] | undefined): string {
+  return (values ?? []).join('\n')
+}
+
+export default function Dashboard({
+  isDarkMode,
+  onLogout,
+  siteContent,
+  onSaveContent,
+  mediaAssets,
+  onUploadMedia,
+}: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('home')
   const [draft, setDraft] = useState<SiteContent>(siteContent)
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadMessage, setUploadMessage] = useState('')
+  const [uploadingProjectIndex, setUploadingProjectIndex] = useState<number | null>(null)
+  const [activeMediaPicker, setActiveMediaPicker] = useState<{
+    projectIndex: number
+    mode: 'cover' | 'gallery'
+  } | null>(null)
 
   useEffect(() => {
     setDraft(siteContent)
@@ -55,12 +88,90 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
     setSaveState('saved')
   }
 
+  const assignProjectImage = (projectIndex: number, imageUrl: string, mode: 'cover' | 'gallery') => {
+    applyDraftChange((current) => ({
+      ...current,
+      portfolio: {
+        ...current.portfolio,
+        items: current.portfolio.items.map((item, itemIndex) => {
+          if (itemIndex !== projectIndex) {
+            return item
+          }
+
+          const existingImages = item.images ?? []
+          const nextImages = existingImages.includes(imageUrl) ? existingImages : [...existingImages, imageUrl]
+
+          if (mode === 'cover') {
+            return {
+              ...item,
+              image: imageUrl,
+              images: nextImages,
+            }
+          }
+
+          return {
+            ...item,
+            images: nextImages,
+          }
+        }),
+      },
+    }))
+  }
+
+  const handleProjectUpload = async (projectIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    setUploadMessage('')
+    setIsUploading(true)
+    setUploadingProjectIndex(projectIndex)
+
+    try {
+      const url = await onUploadMedia(file)
+      assignProjectImage(projectIndex, url, 'cover')
+      setUploadMessage('Image uploaded and set as project cover.')
+    } catch {
+      setUploadMessage('Upload failed. Check your Firebase Storage permissions.')
+    } finally {
+      setIsUploading(false)
+      setUploadingProjectIndex(null)
+      event.target.value = ''
+    }
+  }
+
   const tabs: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
     { key: 'home', label: 'Home', icon: <LayoutDashboard size={16} /> },
     { key: 'services', label: 'Services', icon: <FileText size={16} /> },
     { key: 'portfolio', label: 'Portfolio', icon: <ImageIcon size={16} /> },
     { key: 'testimonials', label: 'Testimonials', icon: <MessageSquareText size={16} /> },
+    { key: 'general', label: 'General', icon: <Settings size={16} /> },
   ]
+
+  const imageOptions = mediaAssets.map((asset) => ({ value: asset.url, label: asset.name }))
+
+  const renderImageSelect = (value: string, onChange: (next: string) => void, label = 'Select from media library') => (
+    <label className="space-y-1 block">
+      <span className={`text-xs ${mutedClass}`}>{label}</span>
+      <select
+        value={imageOptions.some((item) => item.value === value) ? value : ''}
+        onChange={(event) => {
+          if (event.target.value) {
+            onChange(event.target.value)
+          }
+        }}
+        className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+      >
+        <option value="">Select an uploaded image</option>
+        {imageOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
 
   const renderTabContent = () => {
     if (activeTab === 'home') {
@@ -106,8 +217,39 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
           </div>
 
           <div className="grid md:grid-cols-3 gap-4">
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Primary button label</span>
+              <input
+                value={draft.home.primaryCtaLabel}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, home: { ...current.home, primaryCtaLabel: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Secondary button label</span>
+              <input
+                value={draft.home.secondaryCtaLabel}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, home: { ...current.home, secondaryCtaLabel: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Hero image URL</span>
+              <input
+                value={draft.home.heroImage}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, home: { ...current.home, heroImage: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+          </div>
+
+          {renderImageSelect(draft.home.heroImage, (next) =>
+            applyDraftChange((current) => ({ ...current, home: { ...current.home, heroImage: next } })),
+          )}
+
+          <div className="grid md:grid-cols-3 gap-4">
             {draft.home.stats.map((stat, index) => (
-              <div key={stat.label} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={stat.label + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Stat {index + 1}</p>
                 <label className="space-y-1 block">
                   <span className={`text-xs ${mutedClass}`}>Value</span>
@@ -225,7 +367,7 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
                       services: {
                         ...current.services,
                         items: current.services.items.map((item, itemIndex) => (
-                          itemIndex === index ? { ...item, features: splitLines(event.target.value).slice(0, 3) } : item
+                          itemIndex === index ? { ...item, features: splitLines(event.target.value).slice(0, 6) } : item
                         )),
                       },
                     }))}
@@ -263,10 +405,35 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
             </label>
           </div>
 
-          <div className="grid xl:grid-cols-2 gap-4">
+          {uploadMessage && (
+            <div className={`rounded-lg border px-3 py-2 text-xs ${softCardClass}`}>
+              {uploadMessage}
+            </div>
+          )}
+
+          <div className="grid gap-4">
             {draft.portfolio.items.map((project, index) => (
               <div key={project.title + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
-                <p className="text-sm font-semibold text-teal-600">Project {index + 1}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-teal-600">Project {index + 1}</p>
+                  <label className="inline-flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={project.isVisible !== false}
+                      onChange={(event) => applyDraftChange((current) => ({
+                        ...current,
+                        portfolio: {
+                          ...current.portfolio,
+                          items: current.portfolio.items.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, isVisible: event.target.checked } : item,
+                          ),
+                        },
+                      }))}
+                    />
+                    Show on homepage
+                  </label>
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">
                     <span className={`text-xs ${mutedClass}`}>Title</span>
@@ -282,8 +449,6 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
                       className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                     />
                   </label>
-                </div>
-                <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">
                     <span className={`text-xs ${mutedClass}`}>Type</span>
                     <input
@@ -298,8 +463,29 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
                       className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                     />
                   </label>
+                </div>
+
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Description</span>
+                  <textarea
+                    value={project.description ?? ''}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      portfolio: {
+                        ...current.portfolio,
+                        items: current.portfolio.items.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, description: event.target.value } : item,
+                        ),
+                      },
+                    }))}
+                    rows={2}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </label>
+
+                <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">
-                    <span className={`text-xs ${mutedClass}`}>Image URL</span>
+                    <span className={`text-xs ${mutedClass}`}>Main image URL</span>
                     <input
                       value={project.image}
                       onChange={(event) => applyDraftChange((current) => ({
@@ -312,7 +498,108 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
                       className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                     />
                   </label>
+
+                  {renderImageSelect(project.image, (next) =>
+                    applyDraftChange((current) => ({
+                      ...current,
+                      portfolio: {
+                        ...current.portfolio,
+                        items: current.portfolio.items.map((item, itemIndex) => (itemIndex === index ? { ...item, image: next } : item)),
+                      },
+                    })),
+                  )}
                 </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-teal-700 transition-colors">
+                    <Upload size={14} />
+                    {isUploading && uploadingProjectIndex === index ? 'Uploading...' : 'Upload to this project'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleProjectUpload(index, event)
+                      }}
+                      disabled={isUploading}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveMediaPicker((currentPicker) =>
+                        currentPicker?.projectIndex === index && currentPicker.mode === 'cover'
+                          ? null
+                          : { projectIndex: index, mode: 'cover' },
+                      )
+                    }
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${isDarkMode ? 'border-gray-700 text-white hover:border-gray-500' : 'border-slate-300 text-slate-700 hover:border-slate-500'}`}
+                  >
+                    Choose cover from library
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveMediaPicker((currentPicker) =>
+                        currentPicker?.projectIndex === index && currentPicker.mode === 'gallery'
+                          ? null
+                          : { projectIndex: index, mode: 'gallery' },
+                      )
+                    }
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${isDarkMode ? 'border-gray-700 text-white hover:border-gray-500' : 'border-slate-300 text-slate-700 hover:border-slate-500'}`}
+                  >
+                    Add gallery photo from library
+                  </button>
+                </div>
+
+                {activeMediaPicker?.projectIndex === index && (
+                  <div className={`rounded-xl border ${softCardClass} p-3 space-y-3`}>
+                    <p className="text-xs text-teal-600 font-semibold">
+                      {activeMediaPicker.mode === 'cover' ? 'Select a cover image' : 'Select an image to add to gallery'}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-56 overflow-auto pr-1">
+                      {mediaAssets.map((asset) => (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          onClick={() => {
+                            assignProjectImage(index, asset.url, activeMediaPicker.mode)
+                            setActiveMediaPicker(null)
+                            setUploadMessage(
+                              activeMediaPicker.mode === 'cover'
+                                ? 'Cover image selected from library.'
+                                : 'Gallery image added from library.',
+                            )
+                          }}
+                          className={`overflow-hidden rounded-lg border text-left ${isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
+                        >
+                          <img src={asset.url} alt={asset.name} className="h-20 w-full object-cover" />
+                          <p className="px-2 py-1 text-[10px] truncate">{asset.name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Gallery images one URL per line</span>
+                  <textarea
+                    value={joinLines(project.images)}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      portfolio: {
+                        ...current.portfolio,
+                        items: current.portfolio.items.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, images: splitLines(event.target.value) } : item,
+                        ),
+                      },
+                    }))}
+                    rows={4}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </label>
               </div>
             ))}
           </div>
@@ -320,100 +607,418 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
       )
     }
 
-    return (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-4">
-          <label className="space-y-2 block">
-            <span className={`text-sm font-medium ${mutedClass}`}>Section title</span>
-            <input
-              value={draft.testimonials.title}
-              onChange={(event) => applyDraftChange((current) => ({ ...current, testimonials: { ...current.testimonials, title: event.target.value } }))}
-              className={`w-full rounded-xl border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-            />
-          </label>
-          <label className="space-y-2 block">
-            <span className={`text-sm font-medium ${mutedClass}`}>Subtitle</span>
-            <textarea
-              value={draft.testimonials.subtitle}
-              onChange={(event) => applyDraftChange((current) => ({ ...current, testimonials: { ...current.testimonials, subtitle: event.target.value } }))}
-              rows={3}
-              className={`w-full rounded-xl border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-            />
-          </label>
-        </div>
+    if (activeTab === 'testimonials') {
+      return (
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="space-y-2 block">
+              <span className={`text-sm font-medium ${mutedClass}`}>Section title</span>
+              <input
+                value={draft.testimonials.title}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, testimonials: { ...current.testimonials, title: event.target.value } }))}
+                className={`w-full rounded-xl border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-2 block">
+              <span className={`text-sm font-medium ${mutedClass}`}>Subtitle</span>
+              <textarea
+                value={draft.testimonials.subtitle}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, testimonials: { ...current.testimonials, subtitle: event.target.value } }))}
+                rows={3}
+                className={`w-full rounded-xl border px-4 py-3 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+          </div>
 
-        <div className="grid xl:grid-cols-3 gap-4">
-          {draft.testimonials.items.map((testimonial, index) => (
-            <div key={testimonial.name + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
-              <p className="text-sm font-semibold text-teal-600">Testimonial {index + 1}</p>
+          <div className="grid xl:grid-cols-3 gap-4">
+            {draft.testimonials.items.map((testimonial, index) => (
+              <div key={testimonial.name + index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+                <p className="text-sm font-semibold text-teal-600">Testimonial {index + 1}</p>
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Name</span>
+                  <input
+                    value={testimonial.name}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      testimonials: {
+                        ...current.testimonials,
+                        items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, name: event.target.value } : item)),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </label>
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Role</span>
+                  <input
+                    value={testimonial.role}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      testimonials: {
+                        ...current.testimonials,
+                        items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, role: event.target.value } : item)),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </label>
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Rating</span>
+                  <select
+                    value={testimonial.rating}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      testimonials: {
+                        ...current.testimonials,
+                        items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, rating: Number(event.target.value) } : item)),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  >
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <option key={rating} value={rating}>
+                        {rating}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 block">
+                  <span className={`text-xs ${mutedClass}`}>Text</span>
+                  <textarea
+                    value={testimonial.text}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      testimonials: {
+                        ...current.testimonials,
+                        items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, text: event.target.value } : item)),
+                      },
+                    }))}
+                    rows={4}
+                    className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTab === 'general') {
+      return (
+        <div className="space-y-8">
+          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+            <h3 className="text-lg font-semibold">Instagram section</h3>
+            <div className="grid md:grid-cols-2 gap-3">
               <label className="space-y-1 block">
-                <span className={`text-xs ${mutedClass}`}>Name</span>
+                <span className={`text-xs ${mutedClass}`}>Title</span>
                 <input
-                  value={testimonial.name}
-                  onChange={(event) => applyDraftChange((current) => ({
-                    ...current,
-                    testimonials: {
-                      ...current.testimonials,
-                      items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, name: event.target.value } : item)),
-                    },
-                  }))}
+                  value={draft.instagram.title}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, instagram: { ...current.instagram, title: event.target.value } }))}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                 />
               </label>
               <label className="space-y-1 block">
-                <span className={`text-xs ${mutedClass}`}>Role</span>
+                <span className={`text-xs ${mutedClass}`}>Button label</span>
                 <input
-                  value={testimonial.role}
-                  onChange={(event) => applyDraftChange((current) => ({
-                    ...current,
-                    testimonials: {
-                      ...current.testimonials,
-                      items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, role: event.target.value } : item)),
-                    },
-                  }))}
+                  value={draft.instagram.buttonLabel}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, instagram: { ...current.instagram, buttonLabel: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Subtitle</span>
+              <textarea
+                value={draft.instagram.subtitle}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, instagram: { ...current.instagram, subtitle: event.target.value } }))}
+                rows={3}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+          </div>
+
+          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+            <h3 className="text-lg font-semibold">About section</h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Title</span>
+                <input
+                  value={draft.about.title}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, about: { ...current.about, title: event.target.value } }))}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                 />
               </label>
               <label className="space-y-1 block">
-                <span className={`text-xs ${mutedClass}`}>Rating</span>
-                <select
-                  value={testimonial.rating}
-                  onChange={(event) => applyDraftChange((current) => ({
-                    ...current,
-                    testimonials: {
-                      ...current.testimonials,
-                      items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, rating: Number(event.target.value) } : item)),
-                    },
-                  }))}
+                <span className={`text-xs ${mutedClass}`}>Image URL</span>
+                <input
+                  value={draft.about.image}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, about: { ...current.about, image: event.target.value } }))}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                >
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <option key={rating} value={rating}>
-                      {rating}
-                    </option>
-                  ))}
-                </select>
+                />
+              </label>
+            </div>
+            {renderImageSelect(draft.about.image, (next) =>
+              applyDraftChange((current) => ({ ...current, about: { ...current.about, image: next } })),
+            )}
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Paragraph one</span>
+              <textarea
+                value={draft.about.paragraphOne}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, about: { ...current.about, paragraphOne: event.target.value } }))}
+                rows={3}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Paragraph two</span>
+              <textarea
+                value={draft.about.paragraphTwo}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, about: { ...current.about, paragraphTwo: event.target.value } }))}
+                rows={3}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Highlights title</span>
+              <input
+                value={draft.about.highlightsTitle}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, about: { ...current.about, highlightsTitle: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <div className="grid md:grid-cols-3 gap-3">
+              {draft.about.highlights.map((highlight, index) => (
+                <div key={highlight.title + index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
+                  <p className="text-xs font-semibold text-teal-600">Highlight {index + 1}</p>
+                  <input
+                    value={highlight.title}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      about: {
+                        ...current.about,
+                        highlights: current.about.highlights.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, title: event.target.value } : item,
+                        ),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                  <textarea
+                    value={highlight.desc}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      about: {
+                        ...current.about,
+                        highlights: current.about.highlights.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, desc: event.target.value } : item,
+                        ),
+                      },
+                    }))}
+                    rows={3}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+            <h3 className="text-lg font-semibold">Contact section</h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Title</span>
+                <input
+                  value={draft.contact.title}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, title: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
               </label>
               <label className="space-y-1 block">
-                <span className={`text-xs ${mutedClass}`}>Text</span>
+                <span className={`text-xs ${mutedClass}`}>Subtitle</span>
+                <input
+                  value={draft.contact.subtitle}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, subtitle: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>WhatsApp number</span>
+                <input
+                  value={draft.contact.whatsappNumber}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, whatsappNumber: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>SMS number</span>
+                <input
+                  value={draft.contact.smsNumber}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, smsNumber: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Quote title</span>
+                <input
+                  value={draft.contact.quoteTitle}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, quoteTitle: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>WhatsApp button label</span>
+                <input
+                  value={draft.contact.whatsappButtonLabel}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, whatsappButtonLabel: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Quote description</span>
+              <textarea
+                value={draft.contact.quoteDescription}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, quoteDescription: event.target.value } }))}
+                rows={3}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>WhatsApp message</span>
+              <textarea
+                value={draft.contact.whatsappMessage}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, whatsappMessage: event.target.value } }))}
+                rows={2}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>SMS button label</span>
+              <input
+                value={draft.contact.smsButtonLabel}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, contact: { ...current.contact, smsButtonLabel: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <div className="grid md:grid-cols-2 gap-3">
+              {draft.contact.cards.map((card, index) => (
+                <div key={card.label + index} className={`rounded-xl border ${softCardClass} p-3 space-y-2`}>
+                  <input
+                    value={card.label}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      contact: {
+                        ...current.contact,
+                        cards: current.contact.cards.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, label: event.target.value } : item,
+                        ),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                  <input
+                    value={card.value}
+                    onChange={(event) => applyDraftChange((current) => ({
+                      ...current,
+                      contact: {
+                        ...current.contact,
+                        cards: current.contact.cards.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, value: event.target.value } : item,
+                        ),
+                      },
+                    }))}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+            <h3 className="text-lg font-semibold">Footer section</h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Brand title</span>
+                <input
+                  value={draft.footer.brandTitle}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, brandTitle: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Copyright name</span>
+                <input
+                  value={draft.footer.copyrightName}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, copyrightName: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Brand description</span>
+              <input
+                value={draft.footer.brandDescription}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, brandDescription: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Contact phone</span>
+                <input
+                  value={draft.footer.contactPhone}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, contactPhone: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Contact email</span>
+                <input
+                  value={draft.footer.contactEmail}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, contactEmail: event.target.value } }))}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Services footer one per line</span>
                 <textarea
-                  value={testimonial.text}
-                  onChange={(event) => applyDraftChange((current) => ({
-                    ...current,
-                    testimonials: {
-                      ...current.testimonials,
-                      items: current.testimonials.items.map((item, itemIndex) => (itemIndex === index ? { ...item, text: event.target.value } : item)),
-                    },
-                  }))}
+                  value={draft.footer.services.join('\n')}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, services: splitLines(event.target.value) } }))}
+                  rows={4}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className={`text-xs ${mutedClass}`}>Company footer one per line</span>
+                <textarea
+                  value={draft.footer.company.join('\n')}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, company: splitLines(event.target.value) } }))}
                   rows={4}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                 />
               </label>
             </div>
-          ))}
+            <label className="space-y-1 block">
+              <span className={`text-xs ${mutedClass}`}>Follow label</span>
+              <input
+                value={draft.footer.followLabel}
+                onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, followLabel: event.target.value } }))}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              />
+            </label>
+          </div>
         </div>
-      </div>
-    )
+      )
+    }
+
+    return null
   }
 
   return (
@@ -455,7 +1060,7 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
             </div>
 
             <div className="space-y-3">
-              {[{ icon: <LayoutDashboard size={18} />, label: 'Home', key: 'home' as TabKey }, { icon: <FileText size={18} />, label: 'Services', key: 'services' as TabKey }, { icon: <ImageIcon size={18} />, label: 'Portfolio', key: 'portfolio' as TabKey }, { icon: <MessageSquareText size={18} />, label: 'Testimonials', key: 'testimonials' as TabKey }].map((item) => (
+              {tabs.map((item) => (
                 <button
                   key={item.key}
                   type="button"
@@ -485,9 +1090,9 @@ export default function Dashboard({ isDarkMode, onLogout, siteContent, onSaveCon
               <div className="relative flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
                 <div className="space-y-4 max-w-3xl">
                   <p className="text-sm font-semibold text-teal-600 mb-2">Website content manager</p>
-                  <h2 className="text-4xl md:text-5xl font-bold leading-tight">Update your public site from one place.</h2>
+                  <h2 className="text-4xl md:text-5xl font-bold leading-tight">Complete control over text and images.</h2>
                   <p className={`max-w-2xl ${mutedClass}`}>
-                    Edit the Home, Services, Portfolio, and Testimonials sections. The changes are reflected on the main site immediately after saving.
+                    Manage all site content and choose exactly which images appear on the homepage.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">

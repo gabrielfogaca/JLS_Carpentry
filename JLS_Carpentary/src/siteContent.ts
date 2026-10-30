@@ -8,6 +8,9 @@ export type HomeContent = {
   title: string
   highlight: string
   description: string
+  heroImage: string
+  primaryCtaLabel: string
+  secondaryCtaLabel: string
   stats: SiteStat[]
 }
 
@@ -28,6 +31,7 @@ export type PortfolioItem = {
   title: string
   type: string
   image: string
+  isVisible?: boolean
   description?: string
   images?: string[]
 }
@@ -59,6 +63,9 @@ export type InstagramPost = {
 }
 
 export type InstagramContent = {
+  title: string
+  subtitle: string
+  buttonLabel: string
   handle: string
   bio: string
   followerCount: number
@@ -67,12 +74,65 @@ export type InstagramContent = {
   posts: InstagramPost[]
 }
 
+export type AboutHighlight = {
+  title: string
+  desc: string
+}
+
+export type AboutContent = {
+  title: string
+  paragraphOne: string
+  paragraphTwo: string
+  image: string
+  highlightsTitle: string
+  highlights: AboutHighlight[]
+}
+
+export type ContactCard = {
+  label: string
+  value: string
+}
+
+export type ContactContent = {
+  title: string
+  subtitle: string
+  quoteTitle: string
+  quoteDescription: string
+  whatsappNumber: string
+  whatsappMessage: string
+  smsNumber: string
+  whatsappButtonLabel: string
+  smsButtonLabel: string
+  cards: ContactCard[]
+}
+
+export type FooterContent = {
+  brandTitle: string
+  brandDescription: string
+  services: string[]
+  company: string[]
+  contactPhone: string
+  contactEmail: string
+  followLabel: string
+  copyrightName: string
+}
+
+export type MediaAsset = {
+  id: string
+  name: string
+  url: string
+  createdAt: number
+}
+
 export type SiteContent = {
   home: HomeContent
   services: ServiceContent
   portfolio: PortfolioContent
   testimonials: TestimonialsContent
   instagram: InstagramContent
+  about: AboutContent
+  contact: ContactContent
+  footer: FooterContent
 }
 
 export const DEFAULT_SITE_CONTENT: SiteContent = {
@@ -82,6 +142,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     highlight: '& Extensions',
     description:
       'Ready to upgrade your living space? JLS Carpentry delivers top-tier craftsmanship across a full suite of specialised renovation services. Backed by 10+ years of local expertise, we pride ourselves on transparent communication, reliable timelines, and an uncompromising standard of finish.',
+    heroImage: '/homeimg.png',
+    primaryCtaLabel: 'Get Your Free Quote',
+    secondaryCtaLabel: 'View Portfolio',
     stats: [
       { value: '10', label: 'Years Experience' },
       { value: '200', label: 'Projects' },
@@ -137,6 +200,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Master Ensuite Renovation',
         type: 'Bathroom',
+        isVisible: true,
         image: '/images/projects/bathroom/bathroom.jpeg',
         description: 'Master ensuite renovation with custom tile feature and premium finishes.',
         images: [
@@ -150,6 +214,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Pergola and Decking Build',
         type: 'Decking',
+        isVisible: true,
         image: '/images/projects/decking/pergola.jpeg',
         description: 'Large-format pergola and hardwood decking project from frame to final finish.',
         images: [
@@ -193,6 +258,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Internal Floor Renovation',
         type: 'Flooring',
+        isVisible: true,
         image: '/images/projects/floor/WhatsApp Image 2026-10-19 at 7.31.26 PM.jpeg',
         description: 'Interior flooring renovation with staged install and final detailing.',
         images: [
@@ -214,6 +280,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Custom Kitchen Joinery',
         type: 'Kitchen',
+        isVisible: true,
         image: '/images/projects/kitchen/WhatsApp Image 2026-10-19 at 7.31.33 PM (1).jpeg',
         description: 'Kitchen cabinetry and benchtop installation with clean contemporary lines.',
         images: [
@@ -225,6 +292,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Outdoor Playground Timber Works',
         type: 'Outdoor',
+        isVisible: true,
         image: '/images/projects/playground/03.jpeg',
         description: 'Playground carpentry package with climbing wall and timber activity features.',
         images: [
@@ -238,6 +306,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Roof and Pergola Framing',
         type: 'Roofing',
+        isVisible: true,
         image: '/images/projects/roof/WhatsApp Image 2026-10-19 at 7.31.26 PM (1).jpeg',
         description: 'Roof framing and pergola structural work with staged progress documentation.',
         images: [
@@ -261,6 +330,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Custom Stair Build',
         type: 'Stairs',
+        isVisible: true,
         image: '/images/projects/stairs/WhatsApp Image 2026-10-19 at 7.31.32 PM (1).jpeg',
         description: 'Timber stair construction with finish detailing and site-fit precision.',
         images: [
@@ -272,6 +342,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         title: 'Custom Wardrobe Fitout',
         type: 'Wardrobe',
+        isVisible: true,
         image: '/images/projects/wardrobe/hero.jpeg',
         description: 'Bespoke bedroom wardrobe with mirrored sliding doors, shelving, and practical storage layout.',
         images: [
@@ -291,6 +362,10 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     ],
   },
   instagram: {
+    title: 'Follow @jls_carpentry_co',
+    subtitle:
+      'Witness the artistry of premium woodworking. From concept to completion, we document every detail of our bespoke carpentry projects.',
+    buttonLabel: 'Visit Our Instagram',
     handle: 'jls_carpentry_co',
     bio: 'Premium Bespoke Carpentry & Woodworking | Custom builds | Design | 25+ years expertise',
     followerCount: 2800,
@@ -308,4 +383,94 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       { id: '9', image: 'https://images.unsplash.com/photo-1595440707802-9b009979a914?w=400&h=400&fit=crop', likes: 467, comments: 17 },
     ],
   },
+  about: {
+    title: 'About Me',
+    paragraphOne:
+      'I founded JLS Carpentry to help local families transform the way they live through high-quality renovations and extensions. With 10+ years of hands-on experience, I focus on practical design, precision workmanship, and finishes that stand the test of time.',
+    paragraphTwo:
+      'From first consultation to final handover, you can expect clear communication, reliable timelines, and a straightforward process built around your goals.',
+    image: '/images/myself.png',
+    highlightsTitle: 'Why Choose JLS',
+    highlights: [
+      { title: 'Local Renovation Expertise', desc: '10+ years delivering quality residential upgrades' },
+      { title: 'Transparent Communication', desc: 'Clear updates from planning through completion' },
+      { title: 'Reliable Delivery', desc: 'Realistic timelines and uncompromising finishes' },
+    ],
+  },
+  contact: {
+    title: 'Start Your Project Today',
+    subtitle: 'Get in touch to discuss your vision',
+    quoteTitle: 'Free Quote',
+    quoteDescription:
+      'Choose the fastest way to reach us and start your project. We respond quickly and can help you move from idea to estimate.',
+    whatsappNumber: '5551234567',
+    whatsappMessage: "Hi JLS Carpentry, I'd like a quote for my project.",
+    smsNumber: '5551234567',
+    whatsappButtonLabel: 'Message on WhatsApp',
+    smsButtonLabel: 'Open Messages',
+    cards: [
+      { label: 'Phone', value: '(555) 123-4567' },
+      { label: 'Email', value: 'josh@jlscarpentry.com.au' },
+      { label: 'Location', value: '123 Carpenter St' },
+      { label: 'Hours', value: 'Mon-Fri: 8am-6pm' },
+    ],
+  },
+  footer: {
+    brandTitle: 'JLS Carpentry',
+    brandDescription: 'Premier bespoke woodworking solutions since 1998',
+    services: ['Custom Furniture', 'Cabinetry', 'Restoration'],
+    company: ['About', 'Portfolio'],
+    contactPhone: '(555) 123-4567',
+    contactEmail: 'josh@jlscarpentry.com.au',
+    followLabel: 'Instagram',
+    copyrightName: 'JLS Carpentry',
+  },
+}
+
+export function mergeSiteContent(remoteContent: Partial<SiteContent> | null | undefined): SiteContent {
+  if (!remoteContent) {
+    return DEFAULT_SITE_CONTENT
+  }
+
+  return {
+    ...DEFAULT_SITE_CONTENT,
+    ...remoteContent,
+    home: { ...DEFAULT_SITE_CONTENT.home, ...remoteContent.home },
+    services: {
+      ...DEFAULT_SITE_CONTENT.services,
+      ...remoteContent.services,
+      items: remoteContent.services?.items ?? DEFAULT_SITE_CONTENT.services.items,
+    },
+    portfolio: {
+      ...DEFAULT_SITE_CONTENT.portfolio,
+      ...remoteContent.portfolio,
+      items: remoteContent.portfolio?.items ?? DEFAULT_SITE_CONTENT.portfolio.items,
+    },
+    testimonials: {
+      ...DEFAULT_SITE_CONTENT.testimonials,
+      ...remoteContent.testimonials,
+      items: remoteContent.testimonials?.items ?? DEFAULT_SITE_CONTENT.testimonials.items,
+    },
+    instagram: {
+      ...DEFAULT_SITE_CONTENT.instagram,
+      ...remoteContent.instagram,
+      posts: remoteContent.instagram?.posts ?? DEFAULT_SITE_CONTENT.instagram.posts,
+    },
+    about: {
+      ...DEFAULT_SITE_CONTENT.about,
+      ...remoteContent.about,
+      highlights: remoteContent.about?.highlights ?? DEFAULT_SITE_CONTENT.about.highlights,
+    },
+    contact: {
+      ...DEFAULT_SITE_CONTENT.contact,
+      ...remoteContent.contact,
+      cards: remoteContent.contact?.cards ?? DEFAULT_SITE_CONTENT.contact.cards,
+    },
+    footer: {
+      ...DEFAULT_SITE_CONTENT.footer,
+      ...remoteContent.footer,
+      services: remoteContent.footer?.services ?? DEFAULT_SITE_CONTENT.footer.services,
+      company: remoteContent.footer?.company ?? DEFAULT_SITE_CONTENT.footer.company,
+    },
+  }
 }

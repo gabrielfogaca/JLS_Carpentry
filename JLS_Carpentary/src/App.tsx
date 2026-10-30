@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Menu, X, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from './firebase'
-import { DEFAULT_SITE_CONTENT, type SiteContent } from './siteContent'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { onValue, push, ref, set } from 'firebase/database'
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+import Dashboard from './Dashboard'
+import { auth, firebaseReady, realtimeDatabase, storage } from './firebase'
+import { DEFAULT_SITE_CONTENT, mergeSiteContent, type MediaAsset, type SiteContent } from './siteContent'
 
 const NAV_LINKS = [
   { id: 'home', label: 'Home' },
@@ -12,8 +15,9 @@ const NAV_LINKS = [
   { id: 'about', label: 'About' },
 ]
 
-const INSTAGRAM_URL = 'https://instagram.com/jls_carpentry_co'
 const GOOGLE_REVIEW_URL = 'https://g.page/r/CZg4bkaO6lytEBM/review'
+const ADMIN_PATH = '/admin'
+const LOGIN_URL = import.meta.env.VITE_LOGIN_URL || ADMIN_PATH
 
 type GooglePlaceReview = {
   name: string
@@ -113,34 +117,59 @@ function resolveAssetPath(path: string) {
 }
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [portfolioFilter, setPortfolioFilter] = useState('All')
   const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(null)
   const [activeProjectImageIndex, setActiveProjectImageIndex] = useState(0)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [authStatus, setAuthStatus] = useState<'loading' | 'ready'>(() => (auth ? 'loading' : 'ready'))
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [loginError, setLoginError] = useState('')
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
     return DEFAULT_SITE_CONTENT
   })
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([])
   const [googleReviews, setGoogleReviews] = useState<GooglePlaceReview[]>([])
   const [googleReviewsStatus, setGoogleReviewsStatus] = useState<'loading' | 'ready' | 'missing-config' | 'error'>('loading')
 
   useEffect(() => {
-    if (!db) {
+    const onPopState = () => setCurrentPath(window.location.pathname)
+    window.addEventListener('popstate', onPopState)
+
+    return () => {
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!auth) {
+      setAuthStatus('ready')
       return
     }
 
-    const contentRef = doc(db, 'siteContent', 'main')
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user)
+      setAuthStatus('ready')
+    })
 
-    const unsubscribe = onSnapshot(
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (!realtimeDatabase) {
+      return
+    }
+
+    const contentRef = ref(realtimeDatabase, 'siteContent/main')
+
+    const unsubscribe = onValue(
       contentRef,
       (snapshot) => {
         if (snapshot.exists()) {
-          const remoteContent = snapshot.data() as Partial<SiteContent>
-          setSiteContent({
-            ...DEFAULT_SITE_CONTENT,
-            ...remoteContent,
-            portfolio: DEFAULT_SITE_CONTENT.portfolio,
-          })
+          const remoteContent = snapshot.val() as Partial<SiteContent>
+          setSiteContent(mergeSiteContent(remoteContent))
         } else {
           setSiteContent(DEFAULT_SITE_CONTENT)
         }
@@ -149,6 +178,30 @@ export default function App() {
         setSiteContent(DEFAULT_SITE_CONTENT)
       },
     )
+
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (!realtimeDatabase) {
+      return
+    }
+
+    const mediaRef = ref(realtimeDatabase, 'mediaLibrary')
+
+    const unsubscribe = onValue(mediaRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setMediaAssets([])
+        return
+      }
+
+      const value = snapshot.val() as Record<string, Omit<MediaAsset, 'id'>>
+      const assets = Object.entries(value)
+        .map(([id, asset]) => ({ id, ...asset }))
+        .sort((a, b) => b.createdAt - a.createdAt)
+
+      setMediaAssets(assets)
+    })
 
     return unsubscribe
   }, [])
@@ -277,17 +330,140 @@ export default function App() {
     }
   }, [])
 
+  const navigateTo = (path: string, replace = false) => {
+    if (replace) {
+      window.history.replaceState({}, '', path)
+    } else {
+      window.history.pushState({}, '', path)
+    }
+
+    setCurrentPath(path)
+  }
+
+  const handleLogin = async (email: string, password: string) => {
+    if (!auth) {
+      setLoginError('Firebase Authentication is not configured.')
+      return
+    }
+
+    setLoginError('')
+    setIsLoggingIn(true)
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      navigateTo(ADMIN_PATH, true)
+    } catch {
+      setLoginError('Invalid credentials. Please verify your email and password.')
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth)
+    }
+
+    navigateTo('/', true)
+  }
+
+  const handleSaveContent = async (content: SiteContent) => {
+    if (!realtimeDatabase) {
+      throw new Error('Realtime Database is not configured.')
+    }
+
+    await set(ref(realtimeDatabase, 'siteContent/main'), content)
+
+    setSiteContent(content)
+  }
+
+  const handleUploadMedia = async (file: File) => {
+    if (!storage || !realtimeDatabase) {
+      throw new Error('Firebase Storage or Realtime Database is not configured.')
+    }
+
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`
+    const uploadedFileRef = storageRef(storage, `site-media/${fileName}`)
+
+    await uploadBytes(uploadedFileRef, file)
+    const url = await getDownloadURL(uploadedFileRef)
+
+    const entryRef = push(ref(realtimeDatabase, 'mediaLibrary'))
+    await set(entryRef, {
+      name: file.name,
+      url,
+      createdAt: Date.now(),
+    })
+
+    return url
+  }
+
+  const isLoginRoute = currentPath === '/login'
+  const isAdminRoute = currentPath === ADMIN_PATH
+
+  useEffect(() => {
+    if (isLoginRoute && currentUser) {
+      navigateTo(ADMIN_PATH, true)
+    }
+  }, [isLoginRoute, currentUser])
+
+  if (isAdminRoute) {
+    if (authStatus === 'loading') {
+      return (
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
+          <p className="text-sm text-slate-300">Loading authentication...</p>
+        </div>
+      )
+    }
+
+    if (!currentUser) {
+      return (
+        <LoginScreen
+          isFirebaseReady={firebaseReady}
+          isSubmitting={isLoggingIn}
+          errorMessage={loginError}
+          onSubmit={handleLogin}
+          onBackToSite={() => navigateTo('/', true)}
+        />
+      )
+    }
+
+    return (
+      <Dashboard
+        isDarkMode
+        onLogout={handleLogout}
+        siteContent={siteContent}
+        onSaveContent={handleSaveContent}
+        mediaAssets={mediaAssets}
+        onUploadMedia={handleUploadMedia}
+      />
+    )
+  }
+
+  if (isLoginRoute) {
+    return (
+      <LoginScreen
+        isFirebaseReady={firebaseReady}
+        isSubmitting={isLoggingIn}
+        errorMessage={loginError}
+        onSubmit={handleLogin}
+        onBackToSite={() => navigateTo('/', true)}
+      />
+    )
+  }
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setIsMenuOpen(false)
   }
 
-  const portfolioTypes = ['All', ...Array.from(new Set(siteContent.portfolio.items.map((item) => item.type)))]
+  const visiblePortfolioItems = siteContent.portfolio.items.filter((item) => item.isVisible !== false)
+  const portfolioTypes = ['All', ...Array.from(new Set(visiblePortfolioItems.map((item) => item.type)))]
   const activeFilter = portfolioTypes.includes(portfolioFilter) ? portfolioFilter : 'All'
   const filteredPortfolio =
     activeFilter === 'All'
-      ? siteContent.portfolio.items
-      : siteContent.portfolio.items.filter((item) => item.type === activeFilter)
+      ? visiblePortfolioItems
+      : visiblePortfolioItems.filter((item) => item.type === activeFilter)
 
   const activeProject = activeProjectIndex === null ? null : filteredPortfolio[activeProjectIndex]
   const activeProjectImages = useMemo(() => {
@@ -303,6 +479,7 @@ export default function App() {
     : ''
 
   const scrollingReviews = [...googleReviews, ...googleReviews]
+  const instagramUrl = `https://instagram.com/${siteContent.instagram.handle}`
 
   const closeProjectGallery = () => {
     setActiveProjectIndex(null)
@@ -434,7 +611,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1 animate-slide-in-left" style={{ animationFillMode: 'both' }}>
             <img 
-              src={resolveAssetPath('/homeimg.png')} 
+              src={resolveAssetPath(siteContent.home.heroImage)} 
               alt="JLS Carpentry at work" 
               className="w-full h-96 md:h-[450px] object-cover rounded-lg shadow-xl hero-image-float"
             />
@@ -470,13 +647,13 @@ export default function App() {
                 onClick={() => scrollToSection('contact')} 
                 className="bg-amber-600 text-white font-medium py-3 px-8 hover:bg-amber-700 transition-colors rounded-lg animate-pulse-glow"
               >
-                Get Your Free Quote
+                {siteContent.home.primaryCtaLabel}
               </button>
               <button 
                 onClick={() => scrollToSection('portfolio')} 
                 className="border border-gray-500 text-white font-medium py-3 px-8 hover:border-gray-300 transition-colors rounded-lg"
               >
-                View Portfolio
+                {siteContent.home.secondaryCtaLabel}
               </button>
             </div>
             <div
@@ -680,19 +857,19 @@ export default function App() {
       <section id="instagram" className="py-20 px-4 border-t border-gray-800">
         <div className="max-w-6xl mx-auto">
           <div className="mb-12">
-            <h2 className="text-4xl font-display font-semibold mb-3 text-white">Follow @jls_carpentry_co</h2>
-            <p className="text-gray-300">Witness the artistry of premium woodworking. From concept to completion, we document every detail of our bespoke carpentry projects.</p>
+            <h2 className="text-4xl font-display font-semibold mb-3 text-white">{siteContent.instagram.title}</h2>
+            <p className="text-gray-300">{siteContent.instagram.subtitle}</p>
           </div>
 
           <div className="text-left">
             <a
-              href={INSTAGRAM_URL}
+              href={instagramUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-6 text-sm transition-colors rounded-lg"
             >
               <InstagramIcon size={18} />
-              <span>Visit Our Instagram</span>
+              <span>{siteContent.instagram.buttonLabel}</span>
             </a>
           </div>
         </div>
@@ -702,21 +879,17 @@ export default function App() {
       <section id="about" className="py-20 px-4 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <img src={resolveAssetPath('/images/myself.png')} alt="JLS Carpentry founder" className="w-full h-96 md:h-[450px] object-cover rounded-lg grayscale" />
+            <img src={resolveAssetPath(siteContent.about.image)} alt="JLS Carpentry founder" className="w-full h-96 md:h-[450px] object-cover rounded-lg grayscale" />
           </div>
           <div className="space-y-6">
             <div>
-              <h2 className="text-4xl font-display font-semibold mb-4 text-gray-900">About Me</h2>
-              <p className="text-gray-600 leading-relaxed mb-4">I founded JLS Carpentry to help local families transform the way they live through high-quality renovations and extensions. With 10+ years of hands-on experience, I focus on practical design, precision workmanship, and finishes that stand the test of time.</p>
-              <p className="text-gray-600 leading-relaxed">From first consultation to final handover, you can expect clear communication, reliable timelines, and a straightforward process built around your goals.</p>
+              <h2 className="text-4xl font-display font-semibold mb-4 text-gray-900">{siteContent.about.title}</h2>
+              <p className="text-gray-600 leading-relaxed mb-4">{siteContent.about.paragraphOne}</p>
+              <p className="text-gray-600 leading-relaxed">{siteContent.about.paragraphTwo}</p>
             </div>
             <div className="space-y-3">
-              <h3 className="text-xl font-light text-gray-900">Why Choose JLS</h3>
-              {[
-                { title: 'Local Renovation Expertise', desc: '10+ years delivering quality residential upgrades' },
-                { title: 'Transparent Communication', desc: 'Clear updates from planning through completion' },
-                { title: 'Reliable Delivery', desc: 'Realistic timelines and uncompromising finishes' }
-              ].map((item, i) => (
+              <h3 className="text-xl font-light text-gray-900">{siteContent.about.highlightsTitle}</h3>
+              {siteContent.about.highlights.map((item, i) => (
                 <div key={i}>
                   <p className="text-gray-900 text-sm font-light">{item.title}</p>
                   <p className="text-gray-500 text-xs">{item.desc}</p>
@@ -731,43 +904,38 @@ export default function App() {
       <section id="contact" className="py-20 px-4 border-t border-gray-800">
         <div className="max-w-7xl mx-auto">
           <div className="mb-12">
-            <h2 className="text-4xl font-display font-semibold mb-3 text-white">Start Your Project Today</h2>
-            <p className="text-gray-300">Get in touch to discuss your vision</p>
+            <h2 className="text-4xl font-display font-semibold mb-3 text-white">{siteContent.contact.title}</h2>
+            <p className="text-gray-300">{siteContent.contact.subtitle}</p>
           </div>
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             <div className="space-y-6">
               <div>
-                <h3 className="text-2xl font-light mb-3 text-white">Free Quote</h3>
+                <h3 className="text-2xl font-light mb-3 text-white">{siteContent.contact.quoteTitle}</h3>
                 <p className="text-gray-300 text-sm">
-                  Choose the fastest way to reach us and start your project. We respond quickly and can help you move from idea to estimate.
+                  {siteContent.contact.quoteDescription}
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <a
-                  href="https://wa.me/5551234567?text=Hi%20JLS%20Carpentry,%20I%27d%20like%20a%20quote%20for%20my%20project."
+                  href={`https://wa.me/${encodeURIComponent(siteContent.contact.whatsappNumber)}?text=${encodeURIComponent(siteContent.contact.whatsappMessage)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-amber-600 text-white font-medium py-3 text-sm hover:bg-amber-700 transition-colors text-center rounded-lg"
                 >
-                  Message on WhatsApp
+                  {siteContent.contact.whatsappButtonLabel}
                 </a>
                 <a
-                  href="sms:5551234567"
+                  href={`sms:${siteContent.contact.smsNumber}`}
                   className="w-full border border-gray-500 text-white font-medium py-3 text-sm hover:border-gray-300 transition-colors text-center rounded-lg"
                 >
-                  Open Messages
+                  {siteContent.contact.smsButtonLabel}
                 </a>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { label: 'Phone', value: '(555) 123-4567' },
-                { label: 'Email', value: 'josh@jlscarpentry.com.au' },
-                { label: 'Location', value: '123 Carpenter St' },
-                { label: 'Hours', value: 'Mon-Fri: 8am-6pm' }
-              ].map((contact, i) => (
+              {siteContent.contact.cards.map((contact, i) => (
                 <div key={i} className="border border-gray-800 p-4 rounded-lg bg-black/60 backdrop-blur-sm">
                   <p className="text-gray-400 text-xs mb-1">{contact.label}</p>
                   <p className="text-white text-sm">{contact.value}</p>
@@ -783,40 +951,47 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-5 gap-8 mb-8">
             <div>
-              <h4 className="text-white mb-3 font-light">JLS Carpentry</h4>
-              <p className="text-gray-400 text-xs">Premier bespoke woodworking solutions since 1998</p>
+              <h4 className="text-white mb-3 font-light">{siteContent.footer.brandTitle}</h4>
+              <p className="text-gray-400 text-xs">{siteContent.footer.brandDescription}</p>
             </div>
             <div>
               <h4 className="text-white mb-3 font-light">Services</h4>
               <ul className="space-y-2 text-gray-400 text-xs">
-                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Custom Furniture</button></li>
-                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Cabinetry</button></li>
-                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition">Restoration</button></li>
+                {siteContent.footer.services.map((service) => (
+                  <li key={service}><button onClick={() => scrollToSection('services')} className="hover:text-white transition">{service}</button></li>
+                ))}
               </ul>
             </div>
             <div>
               <h4 className="text-white mb-3 font-light">Company</h4>
               <ul className="space-y-2 text-gray-400 text-xs">
-                <li><button onClick={() => scrollToSection('about')} className="hover:text-white transition">About</button></li>
-                <li><button onClick={() => scrollToSection('portfolio')} className="hover:text-white transition">Portfolio</button></li>
+                {siteContent.footer.company.map((item) => (
+                  <li key={item}><button onClick={() => scrollToSection(item.toLowerCase() === 'about' ? 'about' : 'portfolio')} className="hover:text-white transition">{item}</button></li>
+                ))}
               </ul>
             </div>
             <div>
               <h4 className="text-white mb-3 font-light">Contact</h4>
               <ul className="space-y-1 text-gray-400 text-xs">
-                <li>(555) 123-4567</li>
-                <li>josh@jlscarpentry.com.au</li>
+                <li>{siteContent.footer.contactPhone}</li>
+                <li>{siteContent.footer.contactEmail}</li>
               </ul>
             </div>
             <div>
               <h4 className="text-white mb-3 font-light">Follow</h4>
               <ul className="space-y-2 text-gray-400 text-xs">
-                <li><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="hover:text-white transition">Instagram</a></li>
+                <li><a href={instagramUrl} target="_blank" rel="noreferrer" className="hover:text-white transition">{siteContent.footer.followLabel}</a></li>
               </ul>
+              <a
+                href={LOGIN_URL}
+                className="inline-flex items-center mt-4 border border-amber-600 text-amber-500 text-xs font-medium py-2 px-4 rounded hover:bg-amber-600 hover:text-white transition-colors"
+              >
+                Login
+              </a>
             </div>
           </div>
           <div className="border-t border-gray-700 pt-8 text-center text-gray-500 text-xs">
-            <p>&copy; {new Date().getFullYear()} JLS Carpentry. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} {siteContent.footer.copyrightName}. All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -831,6 +1006,88 @@ export default function App() {
       >
         <ArrowUp size={20} />
       </button>
+    </div>
+  )
+}
+
+type LoginScreenProps = {
+  isFirebaseReady: boolean
+  isSubmitting: boolean
+  errorMessage: string
+  onSubmit: (email: string, password: string) => Promise<void>
+  onBackToSite: () => void
+}
+
+function LoginScreen({ isFirebaseReady, isSubmitting, errorMessage, onSubmit, onBackToSite }: LoginScreenProps) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await onSubmit(email.trim(), password)
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-md border border-slate-800 bg-black/50 rounded-2xl p-6 sm:p-8">
+        <div className="mb-6">
+          <p className="text-amber-500 text-xs uppercase tracking-[0.2em] mb-2">Admin access</p>
+          <h1 className="text-3xl font-display font-semibold">Login</h1>
+          <p className="text-sm text-slate-300 mt-2">Use your Firebase account to access the content dashboard.</p>
+        </div>
+
+        {!isFirebaseReady && (
+          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+            Firebase is not fully configured in environment variables.
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{errorMessage}</div>
+        )}
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <label className="block">
+            <span className="text-xs text-slate-300">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              autoComplete="email"
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs text-slate-300">Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete="current-password"
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={!isFirebaseReady || isSubmitting}
+            className="w-full bg-amber-600 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSubmitting ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={onBackToSite}
+          className="mt-4 w-full border border-slate-700 text-slate-200 text-sm font-medium py-2.5 rounded-lg hover:border-slate-500 transition-colors"
+        >
+          Back to site
+        </button>
+      </div>
     </div>
   )
 }

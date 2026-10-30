@@ -1,10 +1,12 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getDatabase } from 'firebase/database'
+import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
@@ -15,6 +17,7 @@ const firebaseConfig = {
 const requiredKeys = [
   firebaseConfig.apiKey,
   firebaseConfig.authDomain,
+  firebaseConfig.databaseURL,
   firebaseConfig.projectId,
   firebaseConfig.storageBucket,
   firebaseConfig.messagingSenderId,
@@ -23,10 +26,14 @@ const requiredKeys = [
 
 export const firebaseReady = requiredKeys.every(Boolean)
 
-export const auth = firebaseReady
-  ? getAuth(getApps().length ? getApp() : initializeApp(firebaseConfig))
+const app = firebaseReady
+  ? getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig)
   : null
 
-export const db = firebaseReady
-  ? getFirestore(getApps().length ? getApp() : initializeApp(firebaseConfig))
-  : null
+export const auth = app ? getAuth(app) : null
+
+export const realtimeDatabase = app ? getDatabase(app) : null
+
+export const storage = app ? getStorage(app) : null
