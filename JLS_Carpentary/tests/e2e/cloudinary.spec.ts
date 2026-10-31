@@ -46,6 +46,7 @@ test('uploads through Cloudinary, reuses the image and publishes persisted conte
   await page.getByRole('button', { name: 'Select cloudinary-project.png as cover', exact: true }).click()
   await page.getByRole('button', { name: 'Add gallery photo from library' }).first().click()
   await page.getByRole('button', { name: 'Add cloudinary-project.png to gallery', exact: true }).click()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: 'Home', exact: true }).first().click()
   await page.getByRole('combobox', { name: 'Select from media library', exact: true }).selectOption(imageUrl)
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()

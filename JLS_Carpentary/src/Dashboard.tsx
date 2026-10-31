@@ -13,6 +13,7 @@ import {
   Sparkles,
   Upload,
   UserRound,
+  X,
 } from 'lucide-react'
 import type { MediaAsset, SiteContent } from './siteContent'
 
@@ -79,6 +80,23 @@ export default function Dashboard({
     projectIndex: number
     mode: 'cover' | 'gallery'
   } | null>(null)
+  const mediaDialog = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (!activeMediaPicker || !mediaDialog.current) return
+    const dialog = mediaDialog.current
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    dialog.showModal()
+    document.body.style.overflow = 'hidden'
+    return () => {
+      dialog.close()
+      document.body.style.overflow = previousOverflow
+      queueMicrotask(() => {
+        if (previousFocus?.isConnected) previousFocus.focus()
+      })
+    }
+  }, [activeMediaPicker])
 
   useEffect(() => {
     if (!dirty.current) setDraft(siteContent)
@@ -696,14 +714,30 @@ export default function Dashboard({
                 )}
 
                 {activeMediaPicker?.projectIndex === index && (
-                  <div className={`rounded-xl border ${softCardClass} p-3 space-y-3`}>
-                    <p className="text-xs text-teal-600 font-semibold">
+                  <dialog
+                    ref={mediaDialog}
+                    aria-labelledby="media-library-title"
+                    onCancel={() => setActiveMediaPicker(null)}
+                    onClick={(event) => {
+                      if (event.target !== event.currentTarget) return
+                      const bounds = event.currentTarget.getBoundingClientRect()
+                      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setActiveMediaPicker(null)
+                    }}
+                    className={`fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-4xl max-h-[85dvh] overflow-y-auto rounded-2xl border p-5 shadow-2xl backdrop:bg-black/70 ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                    <h2 id="media-library-title" className="text-lg text-teal-600 font-semibold">
                       {activeMediaPicker.mode === 'cover' ? 'Select a cover image' : 'Select an image to add to gallery'}
-                    </p>
+                    </h2>
+                    <p className={`text-sm ${mutedClass}`}>{project.title} · {activeMediaPicker.mode === 'cover' ? 'Choose one image for the project cover.' : 'Select photos or deselect them below. Click Save changes after closing to publish.'}</p>
+                    </div>
+                    <button type="button" aria-label="Close image library" onClick={() => setActiveMediaPicker(null)} className="shrink-0 rounded-lg p-2 hover:bg-teal-500/15 focus-visible:outline-2 focus-visible:outline-teal-500"><X size={20} /></button>
+                    </div>
                     {mediaStatus === 'loading' && <p role="status" className={`text-sm ${mutedClass}`}>Loading image library...</p>}
                     {mediaStatus === 'error' && <div role="alert" className="text-sm"><p>{mediaError}</p><button type="button" onClick={onRetry} className="mt-2 underline">Try again</button></div>}
                     {mediaStatus === 'ready' && mediaAssets.length === 0 && <p className={`text-sm ${mutedClass}`}>Your library is empty. Use Upload to this project to add your first image.</p>}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-56 overflow-auto pr-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {mediaAssets.map((asset) => {
                         const isSelected = activeMediaPicker.mode === 'cover'
                           ? project.image === asset.url
@@ -726,7 +760,7 @@ export default function Dashboard({
                           }}
                           className={`relative w-full overflow-hidden rounded-lg border-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${isSelected ? 'border-teal-500 bg-teal-500/15 ring-2 ring-inset ring-teal-500' : isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
                         >
-                          <img src={asset.url} alt={asset.name} className="h-20 w-full object-cover" />
+                          <img src={asset.url} alt={asset.name} loading="lazy" className="h-32 w-full object-cover" />
                           {isSelected && (
                             <span className="absolute top-1 right-1 inline-flex items-center gap-1 rounded-md bg-teal-700 px-2 py-1 text-[10px] font-semibold text-white shadow">
                               <Check size={12} aria-hidden="true" />
@@ -763,7 +797,10 @@ export default function Dashboard({
                         )
                       })}
                     </div>
-                  </div>
+                    <div className="mt-5 flex justify-end">
+                      <button type="button" onClick={() => setActiveMediaPicker(null)} className="rounded-lg bg-teal-600 px-5 py-2 font-semibold text-white hover:bg-teal-700">Done</button>
+                    </div>
+                  </dialog>
                 )}
 
                 <label className="space-y-1 block">
