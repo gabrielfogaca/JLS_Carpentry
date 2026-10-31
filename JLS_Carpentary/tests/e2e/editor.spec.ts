@@ -97,6 +97,27 @@ test('uploads multiple photos, preserves the first cover and highlights selected
   expect(await page.evaluate(() => (window as any).__firebaseMock.content.portfolio.items[0].images.length)).toBe(7)
 })
 
+test('deselects a gallery image without deleting the library file and updates its cover', async ({ page }) => {
+  await login(page)
+  await portfolio(page)
+  await page.locator('input[type=file]').first().setInputFiles(image)
+  await expect(page.getByText('Image uploaded and set as project cover. Click Save changes to publish it.')).toBeVisible()
+  const uploaded = await page.getByLabel('Main image URL', { exact: true }).first().inputValue()
+  await page.getByRole('button', { name: 'Add gallery photo from library' }).first().click()
+  await page.getByRole('button', { name: 'Deselect project.png from gallery', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Add project.png to gallery', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByLabel('Main image URL', { exact: true }).first()).not.toHaveValue(uploaded)
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  const state = await page.evaluate(() => {
+    const mock = (window as any).__firebaseMock
+    return { images: mock.content.portfolio.items[0].images, librarySize: Object.keys(mock.media).length, deleted: mock.deleted }
+  })
+  expect(state.images).not.toContain(uploaded)
+  expect(state.librarySize).toBe(1)
+  expect(state.deleted).toHaveLength(0)
+})
+
 test('continues a batch after an invalid file and preserves successful uploads', async ({ page }) => {
   await login(page)
   await portfolio(page)

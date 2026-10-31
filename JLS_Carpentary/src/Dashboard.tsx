@@ -644,8 +644,8 @@ export default function Dashboard({
                           ? project.image === asset.url
                           : (project.images ?? []).includes(asset.url)
                         return (
+                        <div key={asset.id} className="space-y-1">
                         <button
-                          key={asset.id}
                           type="button"
                           aria-label={activeMediaPicker.mode === 'cover' ? `Select ${asset.name} as cover` : `Add ${asset.name} to gallery`}
                           aria-pressed={isSelected}
@@ -659,7 +659,7 @@ export default function Dashboard({
                                 : 'Gallery image added from library.',
                             )
                           }}
-                          className={`relative overflow-hidden rounded-lg border-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${isSelected ? 'border-teal-500 bg-teal-500/15 ring-2 ring-inset ring-teal-500' : isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
+                          className={`relative w-full overflow-hidden rounded-lg border-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${isSelected ? 'border-teal-500 bg-teal-500/15 ring-2 ring-inset ring-teal-500' : isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
                         >
                           <img src={asset.url} alt={asset.name} className="h-20 w-full object-cover" />
                           {isSelected && (
@@ -670,6 +670,31 @@ export default function Dashboard({
                           )}
                           <p className="px-2 py-1 text-[10px] truncate">{asset.name}</p>
                         </button>
+                        {isSelected && activeMediaPicker.mode === 'gallery' && (
+                          <button
+                            type="button"
+                            aria-label={`Deselect ${asset.name} from gallery`}
+                            onClick={() => {
+                              applyDraftChange((current) => ({
+                                ...current,
+                                portfolio: {
+                                  ...current.portfolio,
+                                  items: current.portfolio.items.map((item, itemIndex) => {
+                                    if (itemIndex !== index) return item
+                                    const images = (item.images ?? []).filter((url) => url !== asset.url)
+                                    return { ...item, images, image: item.image === asset.url ? images[0] ?? '' : item.image }
+                                  }),
+                                },
+                              }))
+                              setMessageProjectIndex(index)
+                              setUploadMessage('Image deselected. It remains in your library. Click Save changes to publish.')
+                            }}
+                            className="w-full rounded-md border border-rose-500/50 px-2 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition"
+                          >
+                            Deselect
+                          </button>
+                        )}
+                        </div>
                         )
                       })}
                     </div>
