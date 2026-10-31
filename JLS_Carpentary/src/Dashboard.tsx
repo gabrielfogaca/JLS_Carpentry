@@ -245,7 +245,7 @@ export default function Dashboard({
   )
 
   const renderItemTabs = (group: string, labels: string[], selected: number, onSelect: (index: number) => void) => (
-    <div role="tablist" aria-label={group} className="flex gap-2 overflow-x-auto pb-2">
+    <div role="tablist" aria-label={group} className="flex flex-wrap gap-2 pb-2">
       {labels.map((label, index) => (
         <button
           key={index}
@@ -266,7 +266,7 @@ export default function Dashboard({
             onSelect(next)
             document.getElementById(`${group}-tab-${next}`)?.focus()
           }}
-          className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selected === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+          className={`min-w-0 max-w-full whitespace-normal break-words rounded-lg border px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selected === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
         >
           {label}
         </button>
@@ -509,7 +509,7 @@ export default function Dashboard({
             </label>
           </div>
 
-          <div role="tablist" aria-label="Portfolio projects" className="flex gap-2 overflow-x-auto pb-2">
+          <div role="tablist" aria-label="Portfolio projects" className="flex flex-wrap gap-2 pb-2">
             {draft.portfolio.items.map((project, index) => (
               <button
                 key={index}
@@ -530,7 +530,7 @@ export default function Dashboard({
                   setProjectTab(next)
                   document.getElementById(`project-tab-${next}`)?.focus()
                 }}
-                className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selectedProject === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+                className={`min-w-0 max-w-full whitespace-normal break-words rounded-lg border px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selectedProject === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
               >
                 {project.title.trim() || `Project ${index + 1}`}
               </button>
