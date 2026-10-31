@@ -78,6 +78,37 @@ test('uploads, selects a cover/gallery and publishes changes that survive reload
   await expect(page.getByRole('dialog').getByRole('button', { name: /Open image/ })).toHaveCount(6)
 })
 
+test('uploads multiple photos, preserves the first cover and highlights selected gallery photos', async ({ page }) => {
+  await login(page)
+  await portfolio(page)
+  await page.locator('input[type=file]').first().setInputFiles([image, { ...image, name: 'second.png' }])
+  await expect(page.getByText(/2 of 2 images uploaded/)).toBeVisible()
+  const urls = await page.getByRole('textbox', { name: /Gallery images.*one URL per line/ }).first().inputValue()
+  const images = urls.split('\n')
+  await expect(page.getByLabel('Main image URL', { exact: true }).first()).toHaveValue(images[images.length - 2])
+  await page.getByRole('button', { name: 'Add gallery photo from library' }).first().click()
+  for (const name of ['project.png', 'second.png']) {
+    const selected = page.getByRole('button', { name: `Add ${name} to gallery`, exact: true })
+    await expect(selected).toHaveAttribute('aria-pressed', 'true')
+    await expect(selected.getByText('Selected', { exact: true })).toBeVisible()
+  }
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => (window as any).__firebaseMock.content.portfolio.items[0].images.length)).toBe(7)
+})
+
+test('continues a batch after an invalid file and preserves successful uploads', async ({ page }) => {
+  await login(page)
+  await portfolio(page)
+  await page.locator('input[type=file]').first().setInputFiles([
+    { name: 'invalid.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid') }, image,
+  ])
+  await expect(page.getByText(/1 of 2 images uploaded/)).toBeVisible()
+  await expect(page.getByText(/invalid.txt: Choose a JPG/)).toBeVisible()
+  await expect(page.getByLabel('Main image URL', { exact: true }).first()).toHaveValue(/upload=/)
+  await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toBeEnabled()
+})
+
 test('shows empty library feedback and recovers from a library permission error', async ({ page }) => {
   await login(page)
   await portfolio(page)

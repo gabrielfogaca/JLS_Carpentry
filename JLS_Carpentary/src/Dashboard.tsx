@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
+  Check,
   FileText,
   Image as ImageIcon,
   LayoutDashboard,
@@ -62,6 +63,8 @@ export default function Dashboard({
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadFile, setUploadFile] = useState({ name: '', position: 0, total: 0 })
+  const uploadInFlight = useRef(false)
   const [uploadMessage, setUploadMessage] = useState('')
   const [messageProjectIndex, setMessageProjectIndex] = useState<number | null>(null)
   const [saveError, setSaveError] = useState('')
@@ -165,24 +168,39 @@ export default function Dashboard({
 
   const handleProjectUpload = async (projectIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget
-    const file = input.files?.[0]
-    if (!file) {
+    const files = Array.from(input.files ?? [])
+    if (!files.length || uploadInFlight.current) {
       return
     }
 
+    uploadInFlight.current = true
     setUploadMessage('')
     setMessageProjectIndex(projectIndex)
     setIsUploading(true)
     setUploadProgress(0)
     setUploadingProjectIndex(projectIndex)
 
+    let uploaded = 0
+    const failures: string[] = []
     try {
-      const url = await onUploadMedia(file, setUploadProgress)
-      assignProjectImage(projectIndex, url, 'cover')
-      setUploadMessage('Image uploaded and set as project cover. Click Save changes to publish it.')
-    } catch (error) {
-      setUploadMessage(error instanceof Error ? error.message : 'Unable to upload this image. Please try again.')
+      for (const [fileIndex, file] of files.entries()) {
+        setUploadFile({ name: file.name, position: fileIndex + 1, total: files.length })
+        setUploadProgress(0)
+        try {
+          const url = await onUploadMedia(file, setUploadProgress)
+          assignProjectImage(projectIndex, url, uploaded === 0 ? 'cover' : 'gallery')
+          uploaded++
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : 'Unable to upload this image. Please try again.'
+          failures.push(files.length === 1 ? reason : `${file.name}: ${reason}`)
+        }
+      }
+      const success = uploaded === 0 ? '' : files.length === 1
+        ? 'Image uploaded and set as project cover. Click Save changes to publish it.'
+        : `${uploaded} of ${files.length} images uploaded. The first uploaded image is the cover; all uploaded images are in the gallery. Click Save changes to publish them.`
+      setUploadMessage([success, ...failures].filter(Boolean).join('\n'))
     } finally {
+      uploadInFlight.current = false
       setIsUploading(false)
       setUploadingProjectIndex(null)
       input.value = ''
@@ -556,9 +574,10 @@ export default function Dashboard({
                 <div className="flex flex-wrap gap-2">
                   <label className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-teal-700 transition-colors">
                     <Upload size={14} />
-                    {isUploading && uploadingProjectIndex === index ? `Uploading... ${uploadProgress}%` : 'Upload to this project'}
+                    {isUploading && uploadingProjectIndex === index ? `Uploading ${uploadFile.position}/${uploadFile.total}... ${uploadProgress}%` : 'Upload to this project'}
                     <input
                       type="file"
+                      multiple
                       accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                       className="hidden"
                       onChange={(event) => {
@@ -597,15 +616,18 @@ export default function Dashboard({
                   </button>
                 </div>
 
+                <p className={`text-xs ${mutedClass}`}>Select one or more images, up to 10 MB each. The first uploaded image becomes the cover; the rest are added to the gallery.</p>
+
                 {isUploading && uploadingProjectIndex === index && (
                   <div role="status" className="space-y-2 text-sm">
+                    <p>Image {uploadFile.position} of {uploadFile.total}: {uploadFile.name}</p>
                     <p>{uploadProgress === 0 ? 'Preparing upload. Checking your connection and library access...' : uploadProgress === 100 ? 'Upload complete. Adding image to the library...' : `Uploading image: ${uploadProgress}%`}</p>
                     <progress value={uploadProgress} max={100} aria-label="Image upload progress" className="w-full accent-teal-600" />
                   </div>
                 )}
 
                 {uploadMessage && messageProjectIndex === index && (
-                  <p role="status" className={`rounded-lg border px-3 py-2 text-sm ${softCardClass}`}>{uploadMessage}</p>
+                  <p role="status" className={`whitespace-pre-line rounded-lg border px-3 py-2 text-sm ${softCardClass}`}>{uploadMessage}</p>
                 )}
 
                 {activeMediaPicker?.projectIndex === index && (
@@ -617,15 +639,19 @@ export default function Dashboard({
                     {mediaStatus === 'error' && <div role="alert" className="text-sm"><p>{mediaError}</p><button type="button" onClick={onRetry} className="mt-2 underline">Try again</button></div>}
                     {mediaStatus === 'ready' && mediaAssets.length === 0 && <p className={`text-sm ${mutedClass}`}>Your library is empty. Use Upload to this project to add your first image.</p>}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-56 overflow-auto pr-1">
-                      {mediaAssets.map((asset) => (
+                      {mediaAssets.map((asset) => {
+                        const isSelected = activeMediaPicker.mode === 'cover'
+                          ? project.image === asset.url
+                          : (project.images ?? []).includes(asset.url)
+                        return (
                         <button
                           key={asset.id}
                           type="button"
                           aria-label={activeMediaPicker.mode === 'cover' ? `Select ${asset.name} as cover` : `Add ${asset.name} to gallery`}
-                          aria-pressed={activeMediaPicker.mode === 'cover' ? project.image === asset.url : (project.images ?? []).includes(asset.url)}
+                          aria-pressed={isSelected}
                           onClick={() => {
                             assignProjectImage(index, asset.url, activeMediaPicker.mode)
-                            setActiveMediaPicker(null)
+                            if (activeMediaPicker.mode === 'cover') setActiveMediaPicker(null)
                             setMessageProjectIndex(index)
                             setUploadMessage(
                               activeMediaPicker.mode === 'cover'
@@ -633,12 +659,19 @@ export default function Dashboard({
                                 : 'Gallery image added from library.',
                             )
                           }}
-                          className={`overflow-hidden rounded-lg border text-left ${isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
+                          className={`relative overflow-hidden rounded-lg border-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${isSelected ? 'border-teal-500 bg-teal-500/15 ring-2 ring-inset ring-teal-500' : isDarkMode ? 'border-gray-700 hover:border-teal-500' : 'border-slate-200 hover:border-teal-500'}`}
                         >
                           <img src={asset.url} alt={asset.name} className="h-20 w-full object-cover" />
+                          {isSelected && (
+                            <span className="absolute top-1 right-1 inline-flex items-center gap-1 rounded-md bg-teal-700 px-2 py-1 text-[10px] font-semibold text-white shadow">
+                              <Check size={12} aria-hidden="true" />
+                              {activeMediaPicker.mode === 'cover' ? 'Cover' : 'Selected'}
+                            </span>
+                          )}
                           <p className="px-2 py-1 text-[10px] truncate">{asset.name}</p>
                         </button>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
