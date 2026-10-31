@@ -59,6 +59,10 @@ export default function Dashboard({
   onRetry,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('home')
+  const [projectTab, setProjectTab] = useState(0)
+  const [serviceTab, setServiceTab] = useState(0)
+  const [testimonialTab, setTestimonialTab] = useState(0)
+  const [generalTab, setGeneralTab] = useState(0)
   const [draft, setDraft] = useState<SiteContent>(siteContent)
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [isUploading, setIsUploading] = useState(false)
@@ -240,6 +244,36 @@ export default function Dashboard({
     </label>
   )
 
+  const renderItemTabs = (group: string, labels: string[], selected: number, onSelect: (index: number) => void) => (
+    <div role="tablist" aria-label={group} className="flex gap-2 overflow-x-auto pb-2">
+      {labels.map((label, index) => (
+        <button
+          key={index}
+          type="button"
+          role="tab"
+          id={`${group}-tab-${index}`}
+          aria-controls={`${group}-panel-${index}`}
+          aria-selected={selected === index}
+          tabIndex={selected === index ? 0 : -1}
+          onClick={() => onSelect(index)}
+          onKeyDown={(event) => {
+            const count = labels.length
+            const next = event.key === 'ArrowRight' ? (index + 1) % count
+              : event.key === 'ArrowLeft' ? (index + count - 1) % count
+              : event.key === 'Home' ? 0 : event.key === 'End' ? count - 1 : null
+            if (next === null) return
+            event.preventDefault()
+            onSelect(next)
+            document.getElementById(`${group}-tab-${next}`)?.focus()
+          }}
+          className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selected === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
   const renderTabContent = () => {
     if (activeTab === 'home') {
       return (
@@ -354,6 +388,7 @@ export default function Dashboard({
     }
 
     if (activeTab === 'services') {
+      const selectedService = Math.min(serviceTab, Math.max(0, draft.services.items.length - 1))
       return (
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
@@ -376,9 +411,10 @@ export default function Dashboard({
             </label>
           </div>
 
-          <div className="grid xl:grid-cols-2 gap-4">
+          {renderItemTabs('services', draft.services.items.map((item, index) => item.title.trim() || `Service ${index + 1}`), selectedService, setServiceTab)}
+          <div className="grid gap-4">
             {draft.services.items.map((service, index) => (
-              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} role="tabpanel" id={`services-panel-${index}`} aria-labelledby={`services-tab-${index}`} hidden={selectedService !== index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Service {index + 1}</p>
                 <div className="grid md:grid-cols-2 gap-3">
                   <label className="space-y-1 block">
@@ -450,6 +486,7 @@ export default function Dashboard({
     }
 
     if (activeTab === 'portfolio') {
+      const selectedProject = Math.min(projectTab, Math.max(0, draft.portfolio.items.length - 1))
       return (
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
@@ -472,9 +509,37 @@ export default function Dashboard({
             </label>
           </div>
 
+          <div role="tablist" aria-label="Portfolio projects" className="flex gap-2 overflow-x-auto pb-2">
+            {draft.portfolio.items.map((project, index) => (
+              <button
+                key={index}
+                type="button"
+                role="tab"
+                id={`project-tab-${index}`}
+                aria-controls={`project-panel-${index}`}
+                aria-selected={selectedProject === index}
+                tabIndex={selectedProject === index ? 0 : -1}
+                onClick={() => setProjectTab(index)}
+                onKeyDown={(event) => {
+                  const count = draft.portfolio.items.length
+                  const next = event.key === 'ArrowRight' ? (index + 1) % count
+                    : event.key === 'ArrowLeft' ? (index + count - 1) % count
+                    : event.key === 'Home' ? 0 : event.key === 'End' ? count - 1 : null
+                  if (next === null) return
+                  event.preventDefault()
+                  setProjectTab(next)
+                  document.getElementById(`project-tab-${next}`)?.focus()
+                }}
+                className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${selectedProject === index ? 'border-teal-600 bg-teal-600 text-white' : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+              >
+                {project.title.trim() || `Project ${index + 1}`}
+              </button>
+            ))}
+          </div>
+
           <div className="grid gap-4">
             {draft.portfolio.items.map((project, index) => (
-              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} role="tabpanel" id={`project-panel-${index}`} aria-labelledby={`project-tab-${index}`} hidden={selectedProject !== index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-teal-600">Project {index + 1}</p>
                   <label className="inline-flex items-center gap-2 text-xs">
@@ -726,6 +791,7 @@ export default function Dashboard({
     }
 
     if (activeTab === 'testimonials') {
+      const selectedTestimonial = Math.min(testimonialTab, Math.max(0, draft.testimonials.items.length - 1))
       return (
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
@@ -748,9 +814,10 @@ export default function Dashboard({
             </label>
           </div>
 
-          <div className="grid xl:grid-cols-3 gap-4">
+          {renderItemTabs('testimonials', draft.testimonials.items.map((item, index) => item.name.trim() || `Testimonial ${index + 1}`), selectedTestimonial, setTestimonialTab)}
+          <div className="grid gap-4">
             {draft.testimonials.items.map((testimonial, index) => (
-              <div key={index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
+              <div key={index} role="tabpanel" id={`testimonials-panel-${index}`} aria-labelledby={`testimonials-tab-${index}`} hidden={selectedTestimonial !== index} className={`rounded-2xl border ${softCardClass} p-4 space-y-3`}>
                 <p className="text-sm font-semibold text-teal-600">Testimonial {index + 1}</p>
                 <label className="space-y-1 block">
                   <span className={`text-xs ${mutedClass}`}>Name</span>
@@ -825,7 +892,8 @@ export default function Dashboard({
     if (activeTab === 'general') {
       return (
         <div className="space-y-8">
-          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+          {renderItemTabs('general', ['Instagram', 'About', 'Contact', 'Footer'], generalTab, setGeneralTab)}
+          <div role="tabpanel" id="general-panel-0" aria-labelledby="general-tab-0" hidden={generalTab !== 0} className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
             <h3 className="text-lg font-semibold">Instagram section</h3>
             <label className="space-y-1 block">
               <span className={`text-xs ${mutedClass}`}>Instagram username (without @)</span>
@@ -860,7 +928,7 @@ export default function Dashboard({
             </label>
           </div>
 
-          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+          <div role="tabpanel" id="general-panel-1" aria-labelledby="general-tab-1" hidden={generalTab !== 1} className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
             <h3 className="text-lg font-semibold">About section</h3>
             <div className="grid md:grid-cols-2 gap-3">
               <label className="space-y-1 block">
@@ -945,7 +1013,7 @@ export default function Dashboard({
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+          <div role="tabpanel" id="general-panel-2" aria-labelledby="general-tab-2" hidden={generalTab !== 2} className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
             <h3 className="text-lg font-semibold">Contact section</h3>
             <div className="grid md:grid-cols-2 gap-3">
               <label className="space-y-1 block">
@@ -1061,7 +1129,7 @@ export default function Dashboard({
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
+          <div role="tabpanel" id="general-panel-3" aria-labelledby="general-tab-3" hidden={generalTab !== 3} className={`rounded-2xl border ${softCardClass} p-4 space-y-4`}>
             <h3 className="text-lg font-semibold">Footer section</h3>
             <div className="grid md:grid-cols-2 gap-3">
               <label className="space-y-1 block">
