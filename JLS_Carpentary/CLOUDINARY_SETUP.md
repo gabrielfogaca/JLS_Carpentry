@@ -1,5 +1,7 @@
 # Cloudinary on Vercel
 
+The scoped npm override for `jwks-rsa → jose@5` is required for Vercel runtimes that cannot load ESM dependencies through CommonJS `require()`. Keep it with `package-lock.json`; the function startup regression test checks this compatibility. See https://github.com/firebase/firebase-admin-node/issues/3181.
+
 Rotate the Cloudinary key exposed in the screenshot and deactivate the old key. Use the new credentials below. Never commit secrets or paste them into chat.
 
 ## Vercel environment variables
