@@ -9,6 +9,7 @@ import { firebaseErrorMessage } from './firebaseErrors'
 import { uploadMedia } from './mediaUpload'
 import { uploadCloudinaryMedia } from './cloudinaryUpload'
 import { smsLink, whatsappLink } from './contactLinks'
+import { mediaProvider } from './mediaProvider'
 
 const NAV_LINKS = [
   { id: 'home', label: 'Home' },
@@ -438,7 +439,7 @@ export default function App() {
     if (!auth?.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
       throw new Error('Administrator access is required to upload images.')
     }
-    if (import.meta.env.VITE_MEDIA_PROVIDER === 'cloudinary') {
+    if (mediaProvider(import.meta.env.VITE_MEDIA_PROVIDER) === 'cloudinary') {
       return uploadCloudinaryMedia(auth.currentUser, realtimeDatabase, file, onProgress)
     }
     if (!storage) throw new Error('Firebase Storage is not configured.')

@@ -19,3 +19,9 @@ test('distinguishes storage, authentication and database failures without exposi
   assert.match(firebaseErrorMessage({ code: 'auth/network-request-failed' }, 'sign in'), /connection/)
   assert.doesNotMatch(firebaseErrorMessage(new Error('private backend details'), 'upload'), /private backend/)
 })
+
+test('recognizes plain Realtime Database permission errors during library preflight', () => {
+  for (const error of [new Error('Permission denied'), { code: 'PERMISSION_DENIED' }, { code: 'database/permission-denied' }]) {
+    assert.match(firebaseErrorMessage(error, 'access the image library'), /Realtime Database mediaLibrary rules/)
+  }
+})

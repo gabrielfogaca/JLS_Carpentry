@@ -1,20 +1,33 @@
 import type { User } from 'firebase/auth'
 import { get, push, ref, set, type Database } from 'firebase/database'
 import { firebaseErrorMessage, validateImage } from './firebaseErrors'
+import { withTimeout } from './withTimeout'
 
 export async function uploadCloudinaryMedia(user: User, database: Database, file: File, onProgress: (percent: number) => void): Promise<string> {
   validateImage(file)
   try {
-    await get(ref(database, 'mediaLibrary'))
+    await withTimeout(get(ref(database, 'mediaLibrary')), 15_000, 'The Firebase image library did not respond within 15 seconds. Check your connection and try again.')
   } catch (error) {
+    if (error instanceof Error && error.message.includes('did not respond within')) throw error
     throw new Error(firebaseErrorMessage(error, 'access the image library'))
   }
-  const authorization = await user.getIdToken()
-  const response = await fetch('/api/cloudinary-sign', { method: 'POST', headers: { Authorization: `Bearer ${authorization}` } })
-  if (!response.headers.get('content-type')?.includes('application/json')) {
-    throw new Error('Upload service unavailable. Use the Vercel deployment or vercel dev locally.')
+  const authorization = await withTimeout(user.getIdToken(), 15_000, 'Session verification timed out. Sign out and sign in again.')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 30_000)
+  let response: Response
+  let signed
+  try {
+    response = await fetch('/api/cloudinary-sign', { method: 'POST', headers: { Authorization: `Bearer ${authorization}` }, signal: controller.signal })
+    if (!response.headers.get('content-type')?.includes('application/json')) {
+      throw new Error('Upload service unavailable. Use the Vercel deployment or vercel dev locally.')
+    }
+    signed = await response.json()
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Upload authorization did not respond within 30 seconds. Check the Vercel function logs and retry.')
+    throw error
+  } finally {
+    clearTimeout(timer)
   }
-  const signed = await response.json()
   if (!response.ok) throw new Error(signed.error || 'Unable to authorize image upload.')
   const body = new FormData()
   body.append('file', file)

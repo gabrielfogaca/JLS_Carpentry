@@ -5,6 +5,11 @@ const mock = await readFile(new URL('../fixtures/firebase-mock.js', import.meta.
 const image = { name: 'project.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1kAAAAASUVORK5CYII=', 'base64') }
 
 test.beforeEach(async ({ page }) => {
+  // These regression tests intentionally exercise the legacy Firebase upload path.
+  await page.route('**/src/App.tsx*', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({ response, body: (await response.text()).replaceAll('import.meta.env.VITE_MEDIA_PROVIDER', "'firebase'") })
+  })
   await page.route('https://**/*', (route) => route.abort())
   await page.route('**/src/firebase.ts*', (route) => route.fulfill({ contentType: 'text/javascript', body: mock }))
   await page.route(/\/node_modules\/\.vite\/deps\/firebase_(auth|database|storage)\.js/, (route) => route.fulfill({ contentType: 'text/javascript', body: mock }))

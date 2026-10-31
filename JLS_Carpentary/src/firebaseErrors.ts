@@ -2,6 +2,13 @@ export function firebaseErrorMessage(error: unknown, action: string): string {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String(error.code)
     : ''
+  // Realtime Database get() may reject with a plain Error rather than a code.
+  const message = error instanceof Error ? error.message.trim() : ''
+  if (/^(?:database\/)?permission[_ -]denied$/i.test(code) || /^permission[_ -]denied\.?$/i.test(message)) {
+    return action === 'access the image library'
+      ? 'Your account cannot access the image library. Check the Realtime Database mediaLibrary rules and your administrator access.'
+      : `Your account does not have permission to ${action}.`
+  }
   const messages: Record<string, string> = {
     'storage/unauthorized': 'Your account cannot upload images. Ask the project owner to check your administrator access.',
     'storage/unauthenticated': 'Your session has expired. Sign in again.',

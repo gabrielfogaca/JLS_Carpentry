@@ -29,7 +29,7 @@ Deploy this code through the existing Vercel deployment workflow and redeploy af
 3. Select the photo for a project and save changes. Reload the public site to verify persistence.
 4. Confirm a signed-out request to POST `/api/cloudinary-sign` is rejected, and a non-admin account cannot authorize uploads.
 
-Existing Firebase image URLs remain unchanged. New uploads use Cloudinary only when `VITE_MEDIA_PROVIDER=cloudinary`; leaving it unset preserves the Firebase Storage path.
+Existing Firebase image URLs remain unchanged. New uploads default to Cloudinary, including when `VITE_MEDIA_PROVIDER` is unset. Set `VITE_MEDIA_PROVIDER=firebase` explicitly to use Firebase Storage. Values are trimmed and case-insensitive; unknown providers produce an error instead of silently selecting Firebase Storage.
 
 Files upload directly from the browser to Cloudinary; only authorization goes through Vercel. The API secret stays on the server. File size is validated in the browser and image formats are included in the signed parameters. Cloudinary plan limits also apply. The upload authorization is reusable during Cloudinary's signature validity window, with a unique fixed public ID and overwrite disabled.
 
