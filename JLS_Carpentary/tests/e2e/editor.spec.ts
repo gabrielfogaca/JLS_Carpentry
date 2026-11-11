@@ -26,6 +26,25 @@ async function portfolio(page: Page) {
   await page.getByRole('button', { name: 'Portfolio', exact: true }).first().click()
 }
 
+test('preserves spaces and newlines when typing footer services', async ({ page }) => {
+  await login(page)
+  await page.getByRole('button', { name: 'General', exact: true }).first().click()
+  await page.getByRole('tab', { name: 'Footer', exact: true }).click()
+  const services = page.getByLabel('Services footer one per line')
+  await services.fill('')
+  await services.pressSequentially('Door and Window installs')
+  await services.press('Enter')
+  await services.pressSequentially('Custom Furniture')
+  await expect(services).toHaveValue('Door and Window installs\nCustom Furniture')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Back to site', exact: true }).click()
+  await page.reload()
+  const footer = page.locator('footer')
+  await expect(footer.getByRole('button', { name: 'Door and Window installs', exact: true })).toBeVisible()
+  await expect(footer.getByRole('button', { name: 'Custom Furniture', exact: true })).toBeVisible()
+})
+
 test('saves formatted contact numbers and keeps correct public links after reload', async ({ page }) => {
   await login(page)
   await page.getByRole('button', { name: 'General', exact: true }).first().click()

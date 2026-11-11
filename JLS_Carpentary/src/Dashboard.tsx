@@ -136,7 +136,14 @@ export default function Dashboard({
     try {
       setSaveError('')
       setSaveState('saving')
-      await onSaveContent(draft)
+      await onSaveContent({
+        ...draft,
+        footer: {
+          ...draft.footer,
+          services: splitLines(draft.footer.services.join('\n')),
+          company: splitLines(draft.footer.company.join('\n')),
+        },
+      })
       if (savedRevision === revision.current) {
         dirty.current = false
         setSaveState('saved')
@@ -1217,7 +1224,7 @@ export default function Dashboard({
                 <span className={`text-xs ${mutedClass}`}>Services footer one per line</span>
                 <textarea
                   value={draft.footer.services.join('\n')}
-                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, services: splitLines(event.target.value) } }))}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, services: event.target.value.split('\n') } }))}
                   rows={4}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                 />
@@ -1226,7 +1233,7 @@ export default function Dashboard({
                 <span className={`text-xs ${mutedClass}`}>Company footer one per line</span>
                 <textarea
                   value={draft.footer.company.join('\n')}
-                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, company: splitLines(event.target.value) } }))}
+                  onChange={(event) => applyDraftChange((current) => ({ ...current, footer: { ...current.footer, company: event.target.value.split('\n') } }))}
                   rows={4}
                   className={`w-full rounded-lg border px-3 py-2 outline-none transition ${isDarkMode ? 'bg-gray-950 border-gray-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                 />
