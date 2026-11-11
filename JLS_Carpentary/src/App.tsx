@@ -725,6 +725,11 @@ export default function App() {
                 {siteContent.home.secondaryCtaLabel}
               </button>
             </div>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+              <span>ABN: 24 392 181 370</span>
+              <span aria-hidden="true">&middot;</span>
+              <span>Builder licence nº: 100963S</span>
+            </p>
             <div
               className="grid grid-cols-3 gap-8 pt-8 animate-fade-in-up"
               style={{ animationDelay: '580ms', animationFillMode: 'both' }}
@@ -965,6 +970,16 @@ export default function App() {
                 </div>
               ))}
             </div>
+            <dl className="grid gap-4 border-t border-gray-200 pt-5 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-gray-500">ABN</dt>
+                <dd className="mt-1 text-sm text-gray-900">24 392 181 370</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">Builder licence nº</dt>
+                <dd className="mt-1 text-sm text-gray-900">100963S</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
@@ -1061,6 +1076,11 @@ export default function App() {
           </div>
           <div className="border-t border-gray-700 pt-8 text-center text-gray-500 text-xs">
             <p>&copy; {new Date().getFullYear()} {siteContent.footer.copyrightName}. All rights reserved.</p>
+            <p className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-gray-400">
+              <span>ABN: 24 392 181 370</span>
+              <span aria-hidden="true">&middot;</span>
+              <span>Builder licence nº: 100963S</span>
+            </p>
           </div>
         </div>
       </footer>
