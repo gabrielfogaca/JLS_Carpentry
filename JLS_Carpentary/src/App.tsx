@@ -481,7 +481,16 @@ export default function App() {
     ? activeProjectImages[activeProjectImageIndex] ?? activeProject.image
     : ''
 
-  const scrollingReviews = [...googleReviews, ...googleReviews]
+  const savedReviews = siteContent.testimonials.items.filter((review) => review.text.trim())
+  const displayedReviews = [
+    ...savedReviews,
+    ...DEFAULT_SITE_CONTENT.testimonials.items.filter((review) =>
+      !savedReviews.some((saved) => saved.name.trim().toLowerCase() === review.name.trim().toLowerCase())),
+    ...googleReviews.filter((review) =>
+      ![...savedReviews, ...DEFAULT_SITE_CONTENT.testimonials.items].some((saved) =>
+        saved.name.trim().toLowerCase() === review.name.trim().toLowerCase())),
+  ]
+  const scrollingReviews = [...displayedReviews, ...displayedReviews]
   const instagramUrl = `https://instagram.com/${siteContent.instagram.handle}`
 
   const closeProjectGallery = () => {
@@ -820,22 +829,35 @@ export default function App() {
 
       <section className="bg-white py-14 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="mb-8">
+          <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-amber-600 text-xs font-medium uppercase tracking-[0.2em] mb-2">Google Reviews</p>
-              <h3 className="text-3xl font-display font-semibold text-gray-900">What Clients Say After Project Completion</h3>
+              <h3 className="text-3xl font-display font-semibold text-gray-900">{siteContent.testimonials.title}</h3>
+              <p className="text-gray-600 mt-2">{siteContent.testimonials.subtitle}</p>
             </div>
+            <a href={GOOGLE_REVIEW_URL} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-3 self-start rounded-full border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100">
+              <span className="text-amber-500 tracking-widest" aria-hidden="true">★★★★★</span>
+              Customer stories <span aria-hidden="true">↗</span>
+            </a>
           </div>
 
-          {googleReviewsStatus === 'ready' && googleReviews.length > 0 ? (
+          {displayedReviews.length > 0 ? (
             <div className="reviews-marquee" aria-label="Client reviews">
               <div className="reviews-marquee-track">
                 {scrollingReviews.map((review, index) => (
-                  <article key={`${review.name}-${index}`} className="reviews-card">
-                    <p className="text-amber-500 text-sm mb-3" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}</p>
-                    <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.text}</p>
-                    <p className="text-gray-900 text-sm font-medium">{review.name}</p>
-                    <p className="text-gray-500 text-xs">{review.role}</p>
+                  <article key={`${review.name}-${index}`} className="reviews-card" aria-hidden={index >= displayedReviews.length ? true : undefined}>
+                    <div className="flex items-center justify-between mb-5">
+                      <p className="text-amber-500 text-sm tracking-[0.16em]" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}</p>
+                      <span className="reviews-quote" aria-hidden="true">“</span>
+                    </div>
+                    <blockquote className="text-slate-600 text-sm leading-7 flex-1">{review.text}</blockquote>
+                    <div className="mt-6 pt-5 border-t border-slate-100 flex items-center gap-3">
+                      <span className="reviews-avatar" aria-hidden="true">{review.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}</span>
+                      <div>
+                        <p className="text-slate-900 text-sm font-semibold">{review.name}</p>
+                        <p className="text-slate-400 text-xs mt-1">{review.role}</p>
+                      </div>
+                    </div>
                   </article>
                 ))}
               </div>

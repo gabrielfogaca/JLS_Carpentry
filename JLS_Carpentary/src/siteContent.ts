@@ -357,9 +357,12 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     title: 'Client Testimonials',
     subtitle: 'What our satisfied clients have to say',
     items: [
-      { name: 'Sarah Johnson', role: 'Homeowner', text: 'JLS Carpentry transformed our kitchen beyond expectations. Outstanding work!', rating: 5 },
-      { name: 'Michael Chen', role: 'Interior Designer', text: 'Working with JLS is a pleasure. Impeccable craftsmanship and reliability.', rating: 5 },
-      { name: 'Emma Williams', role: 'Corporate Client', text: 'The custom built-ins elevated our entire office. Highly recommended!', rating: 5 },
+      { name: 'Gabriel Furlan Fogaça', role: 'Google Review', text: 'Josh is a Excellent workmanship, very professional and Reliable.', rating: 5 },
+      { name: 'Val H', role: 'Google Review', text: 'Very happy with the work done to fix the ceiling of my front porch. Josh was on time for the initial consult and on the day of the job. No fuss, easy to work with. Very efficient with completing the job.', rating: 5 },
+      { name: 'Lincoln Watson', role: 'Google Review', text: 'Highly recommend JLS Carpentry! Great quality workmanship, attention to detail and a professional attitude. Reliable, hardworking and takes pride in getting the job done properly. Would definitely recommend JLS Carpentry to anyone looking for a quality builder carpenter', rating: 5 },
+      { name: 'Monika Longworth', role: 'Google Review', text: 'Great service and exceptional attention to detail. Josh and his team showed up on time every day, took real care with their work and left everything spotless at the end of each day. Whenever an issue came up, they found a practical solution. Highly recommend Josh and his team. A+++!', rating: 5 },
+      { name: 'Meredith Read', role: 'Google Review', text: 'Quality workmanship and great care for your property. Josh repaired some rotten floorboards for me and the result was superb. He also cleaned up after himself well which was great', rating: 5 },
+      { name: 'Harry Manton', role: 'Google Review', text: 'Friendly, knowledgeable and completed the works ahead of scheduled! 100% would use again.', rating: 5 },
     ],
   },
   instagram: {
@@ -450,7 +453,11 @@ export function mergeSiteContent(remoteContent: Partial<SiteContent> | null | un
     testimonials: {
       ...DEFAULT_SITE_CONTENT.testimonials,
       ...remoteContent.testimonials,
-      items: remoteContent.testimonials?.items ?? DEFAULT_SITE_CONTENT.testimonials.items,
+      items: remoteContent.testimonials?.items?.length === 3 &&
+        remoteContent.testimonials.items.every((item, index) =>
+          item.name === ['Sarah Johnson', 'Michael Chen', 'Emma Williams'][index])
+        ? DEFAULT_SITE_CONTENT.testimonials.items
+        : remoteContent.testimonials?.items ?? DEFAULT_SITE_CONTENT.testimonials.items,
     },
     instagram: {
       ...DEFAULT_SITE_CONTENT.instagram,

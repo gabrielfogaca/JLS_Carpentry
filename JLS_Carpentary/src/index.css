@@ -194,21 +194,22 @@ img {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% - 0.5rem));
   }
 }
 
 .reviews-marquee {
+  padding: 12px 0 28px;
   overflow: hidden;
   position: relative;
-  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 
 .reviews-marquee-track {
   display: flex;
   gap: 1rem;
   width: max-content;
-  animation: reviews-scroll 28s linear infinite;
+  animation: reviews-scroll 22s linear infinite;
 }
 
 .reviews-marquee:hover .reviews-marquee-track {
@@ -216,15 +217,48 @@ img {
 }
 
 .reviews-card {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
   width: min(360px, calc(100vw - 3rem));
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8e5df;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.reviews-card:hover {
+  border-color: #d6b46c;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.reviews-quote {
+  color: #e9dfc9;
+  font: 56px/0.65 Georgia, serif;
+}
+
+.reviews-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f5f0e6;
+  color: #8b6c30;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reviews-marquee {
+    overflow-x: auto;
+    mask-image: none;
+  }
   .hero-image-float,
   .animate-fade-in-up,
   .animate-fade-in-down,
